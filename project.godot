@@ -1,0 +1,29 @@
+; Engine configuration file.
+; It's best edited using the editor UI and not directly,
+; since the parameters that go here are not all obvious.
+;
+; Format:
+;   [section] ; section goes between []
+;   param=value ; assign values to parameters
+
+config_version=5
+
+[application]
+
+config/name="audio-shader"
+run/main_scene="uid://cg7hpc6lknr54"
+config/features=PackedStringArray("4.4", "Forward Plus")
+config/icon="res://icon.svg"
+
+[audio]
+
+buses/default_bus_layout="uid://bjfri5n15u7cn"
+
+[display]
+
+window/size/viewport_width=1920
+window/size/viewport_height=1080
+
+[global]
+
+Music=false
