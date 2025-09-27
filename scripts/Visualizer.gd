@@ -42,6 +42,7 @@ extends Node2D
 @export var material_power_particle: ShaderMaterial # NEW
 @export var material_fractal_colors: ShaderMaterial # NEW
 @export var material_bubbles: ShaderMaterial # NEW
+@export var custom_materials: Array[ShaderMaterial] = [] # optional extra shader materials to bind
 
 enum Mode {
 	CHROMA, CIRCLE, BARS, LINE, WATERFALL, AURORA, UNIVERSE, UNIVERSE_ALT,
@@ -89,6 +90,73 @@ var _spec_tex: ImageTexture
 var _wf_img: Image
 var _wf_tex: ImageTexture
 var _wf_head: int = 0
+
+# Cache of shader parameter availability so we can safely broadcast
+# uniforms to any bound materials (built-in or custom).
+var _shader_param_cache: Dictionary = {}
+
+func _append_material_unique(list: Array[ShaderMaterial], mat: ShaderMaterial) -> void:
+        if mat == null:
+                return
+        if !list.has(mat):
+                list.append(mat)
+
+func _all_materials() -> Array[ShaderMaterial]:
+        var mats: Array[ShaderMaterial] = []
+        for mat in [
+                material_chromatic, material_circle, material_bars, material_line,
+                material_waterfall, material_aurora, material_universe,
+                material_universe_alt, material_basic_audio_shader,
+                material_sonic_fusion, material_power_particle,
+                material_fractal_colors, material_bubbles
+        ]:
+                _append_material_unique(mats, mat)
+        for mat in custom_materials:
+                _append_material_unique(mats, mat)
+        if color_rect and color_rect.material is ShaderMaterial:
+                _append_material_unique(mats, color_rect.material as ShaderMaterial)
+        return mats
+
+func _material_supports_parameter(mat: ShaderMaterial, param: StringName) -> bool:
+        if mat == null or mat.shader == null:
+                return false
+        var shader_id := mat.shader.get_instance_id()
+        var key := "%s:%s" % [str(shader_id), str(param)]
+        if _shader_param_cache.has(key):
+                return _shader_param_cache[key]
+        var supported := false
+        for info in mat.shader.get_param_list():
+                if info.has("name") and str(info["name"]) == str(param):
+                        supported = true
+                        break
+        _shader_param_cache[key] = supported
+        return supported
+
+func _set_param_if_supported(mat: ShaderMaterial, param: StringName, value) -> void:
+        if _material_supports_parameter(mat, param):
+                mat.set_shader_parameter(param, value)
+
+func _update_audio_uniforms() -> void:
+        var level_val := clamp(level_sm * level_boost, 0.0, 1.0)
+        var kick_val  := clamp(kick_sm  * kick_boost,  0.0, 1.0)
+        var bass_val  := clamp(bass_sm,  0.0, 1.0)
+        var treble_val := clamp(treb_sm, 0.0, 1.0)
+        var tone_val  := clamp(tone_sm,  0.0, 1.0)
+        var kick_env_val := clamp(_kick_env, 0.0, 1.0)
+        var ring_age_val := clamp(_ring_age, 0.0, 1.0)
+        var kick_in_val := clamp(kick_sm, 0.0, 1.0)
+        var head_norm := float(_wf_head) / float(max(1, waterfall_rows))
+        for mat in _all_materials():
+                _set_param_if_supported(mat, "level", level_val)
+                _set_param_if_supported(mat, "audio_level", level_val)
+                _set_param_if_supported(mat, "kick", kick_val)
+                _set_param_if_supported(mat, "kick_in", kick_in_val)
+                _set_param_if_supported(mat, "kick_env", kick_env_val)
+                _set_param_if_supported(mat, "ring_age", ring_age_val)
+                _set_param_if_supported(mat, "bass", bass_val)
+                _set_param_if_supported(mat, "treble", treble_val)
+                _set_param_if_supported(mat, "tone", tone_val)
+                _set_param_if_supported(mat, "head_norm", head_norm)
 
 # Onset envelope + ring (used by AURORA/UNIVERSE variants)
 @export var kick_thresh_on: float  = 0.55
@@ -248,37 +316,9 @@ func _process(dt: float) -> void:
 	# Onset envelope
 	_update_kick_envelope(dt)
 
-	var mat := color_rect.material as ShaderMaterial
-	match mode:
-		Mode.CHROMA:
-			mat.set_shader_parameter("level", clamp(level_sm * level_boost, 0.0, 1.0))
-			mat.set_shader_parameter("kick",  clamp(kick_sm  * kick_boost,  0.0, 1.0))
-		Mode.CIRCLE:
-			mat.set_shader_parameter("bass",   clamp(bass_sm,  0.0, 1.0))
-			mat.set_shader_parameter("treble", clamp(treb_sm,  0.0, 1.0))
-			mat.set_shader_parameter("tone",   clamp(tone_sm,  0.0, 1.0))
-		Mode.WATERFALL:
-			if material_waterfall:
-				var head_norm := float(_wf_head) / float(max(1, waterfall_rows))
-				material_waterfall.set_shader_parameter("head_norm", head_norm)
-		Mode.BARS, Mode.LINE:
-			pass
-		Mode.AURORA, Mode.UNIVERSE, Mode.UNIVERSE_ALT:
-			mat.set_shader_parameter("kick_in",  clamp(kick_sm,   0.0, 1.0))
-			mat.set_shader_parameter("kick_env", clamp(_kick_env, 0.0, 1.0))
-			mat.set_shader_parameter("ring_age", clamp(_ring_age, 0.0, 1.0))
-		Mode.BASIC_AUDIO:
-			if material_basic_audio_shader:
-				var head_norm2 := float(_wf_head) / float(max(1, waterfall_rows))
-				material_basic_audio_shader.set_shader_parameter("head_norm", head_norm2)
-		Mode.SONIC_FUSION:
-			pass
-		Mode.FRACTAL_COLORS:
-			pass
-		Mode.BUBBLES:
-			pass
+        _update_audio_uniforms()
 
-	_update_aspect()
+        _update_aspect()
 
 	# Overlay time is total elapsed
 	var play_pos := player.get_playback_position()
@@ -322,26 +362,15 @@ func _notification(what: int) -> void:
 		_update_aspect()
 
 func _update_aspect() -> void:
-	var s := get_viewport_rect().size
-	if s.y <= 0.0: return
-	var aspect := s.x / s.y
+        var s := get_viewport_rect().size
+        if s.y <= 0.0: return
+        var aspect := s.x / s.y
 
-	var active := color_rect.material as ShaderMaterial
-	if active:
-		active.set_shader_parameter("aspect", aspect)
-
-	for m in [
-		material_bars, material_line, material_waterfall, material_aurora,
-		material_universe, material_universe_alt,
-		material_basic_audio_shader, material_sonic_fusion
-	]:
-		if m:
-			m.set_shader_parameter("aspect", aspect)
-			m.set_shader_parameter("bar_count", spectrum_bar_count)
-	if material_waterfall:
-		material_waterfall.set_shader_parameter("rows", waterfall_rows)
-	if material_basic_audio_shader:
-		material_basic_audio_shader.set_shader_parameter("wf_rows", waterfall_rows)
+        for mat in _all_materials():
+                _set_param_if_supported(mat, "aspect", aspect)
+                _set_param_if_supported(mat, "bar_count", spectrum_bar_count)
+                _set_param_if_supported(mat, "rows", waterfall_rows)
+                _set_param_if_supported(mat, "wf_rows", waterfall_rows)
 
 # Spectrum
 func _setup_spectrum_resources() -> void:
@@ -416,24 +445,14 @@ func _update_kick_envelope(dt: float) -> void:
 
 # Bind textures once
 func _bind_all_material_textures() -> void:
-	for m in [
-		material_bars, material_line, material_aurora,
-		material_universe, material_universe_alt,
-		material_basic_audio_shader,
-		material_sonic_fusion, material_fractal_colors,
-		material_bubbles		
-	]:
-		if m:
-			m.set_shader_parameter("spectrum_tex", _spec_tex)
-			m.set_shader_parameter("bar_count", spectrum_bar_count)
-	if material_waterfall:
-		material_waterfall.set_shader_parameter("waterfall_tex", _wf_tex)
-		material_waterfall.set_shader_parameter("bar_count", spectrum_bar_count)
-		material_waterfall.set_shader_parameter("rows", waterfall_rows)
-	if material_basic_audio_shader:
-		material_basic_audio_shader.set_shader_parameter("waterfall_tex", _wf_tex)
-		material_basic_audio_shader.set_shader_parameter("wf_rows", waterfall_rows)
-		# head_norm set per-frame in _process()
+        _shader_param_cache.clear()
+        for mat in _all_materials():
+                _set_param_if_supported(mat, "spectrum_tex", _spec_tex)
+                _set_param_if_supported(mat, "bar_count", spectrum_bar_count)
+                _set_param_if_supported(mat, "waterfall_tex", _wf_tex)
+                _set_param_if_supported(mat, "rows", waterfall_rows)
+                _set_param_if_supported(mat, "wf_rows", waterfall_rows)
+        # head_norm is updated per-frame in _update_audio_uniforms()
 
 # -----------------------------------------------------------------------------------
 # Tracklist overlay implementation (NEW)
