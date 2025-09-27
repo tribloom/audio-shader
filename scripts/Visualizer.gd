@@ -83,6 +83,9 @@ var bus_idx: int = -1
 var started := false
 var mode: Mode
 
+# Cache shader uniform names for quick lookups when binding parameters.
+var _shader_uniform_cache: Dictionary = {}
+
 # Smoothed signals
 var level_sm := 0.0
 var kick_sm  := 0.0
@@ -363,12 +366,12 @@ func _process(dt: float) -> void:
 
 	var m := color_rect.material as ShaderMaterial
 	if m:
-		_maybe_set(m, "aspect", get_viewport_rect().size.x / max(1.0, get_viewport_rect().size.y))
-		_maybe_set(m, "level_in", clamp(level_sm * level_boost, 0.0, 1.0))
-		_maybe_set(m, "bass_in",  clamp(bass_sm, 0.0, 1.0))
-		_maybe_set(m, "treble_in",clamp(treb_sm, 0.0, 1.0))
-		_maybe_set(m, "tone_in",  clamp(tone_sm, 0.0, 1.0))
-		_maybe_set(m, "kick_env", clamp(_kick_env, 0.0, 1.0))  # for “center flash” beats
+		_set_uniform_if_present(m, "aspect", get_viewport_rect().size.x / max(1.0, get_viewport_rect().size.y))
+		_set_uniform_if_present(m, "level_in", clamp(level_sm * level_boost, 0.0, 1.0))
+		_set_uniform_if_present(m, "bass_in", clamp(bass_sm, 0.0, 1.0))
+		_set_uniform_if_present(m, "treble_in", clamp(treb_sm, 0.0, 1.0))
+		_set_uniform_if_present(m, "tone_in", clamp(tone_sm, 0.0, 1.0))
+		_set_uniform_if_present(m, "kick_env", clamp(_kick_env, 0.0, 1.0))  # for “center flash” beats
 
 	_update_aspect()
 
@@ -376,12 +379,31 @@ func _process(dt: float) -> void:
 	var play_pos := player.get_playback_position()
 	_update_track_overlay(play_pos)
 
-func _maybe_set(m: ShaderMaterial, name: String, v) -> void:
-	if m == null or m.shader == null: return
-	for u in m.shader.get_shader_uniform_list():
-		if u.name == name:
-			m.set_shader_parameter(name, v)
-			return
+func _shader_has_uniform(m: ShaderMaterial, name: String) -> bool:
+	if m == null or m.shader == null:
+		return false
+
+	if !_shader_uniform_cache.has(m.shader):
+		var cache := {}
+		for u in m.shader.get_shader_uniform_list():
+			cache[u.name] = true
+		_shader_uniform_cache[m.shader] = cache
+
+	var uniform_map = _shader_uniform_cache[m.shader]
+	return uniform_map.has(name)
+
+func _set_uniform_if_present(m: ShaderMaterial, name: String, v) -> void:
+	if _shader_has_uniform(m, name):
+		m.set_shader_parameter(name, v)
+
+func _apply_static_shader_inputs(m: ShaderMaterial) -> void:
+	if m == null:
+		return
+	_set_uniform_if_present(m, "spectrum_tex", _spec_tex)
+	_set_uniform_if_present(m, "waterfall_tex", _wf_tex)
+	_set_uniform_if_present(m, "bar_count", spectrum_bar_count)
+	_set_uniform_if_present(m, "rows", waterfall_rows)
+	_set_uniform_if_present(m, "wf_rows", waterfall_rows)
 
 func _norm_db(db_val: float) -> float:
 	var dmin := db_min
@@ -427,7 +449,8 @@ func _update_aspect() -> void:
 
 	var active := color_rect.material as ShaderMaterial
 	if active:
-		active.set_shader_parameter("aspect", aspect)
+		_apply_static_shader_inputs(active)
+		_set_uniform_if_present(active, "aspect", aspect)
 
 	for m in [
 		material_bars, material_line, material_waterfall, material_aurora,
@@ -436,22 +459,22 @@ func _update_aspect() -> void:
 		material_fractal_colors, material_bubbles
 	]:
 		if m:
-			m.set_shader_parameter("aspect", aspect)
-			m.set_shader_parameter("bar_count", spectrum_bar_count)
+			_apply_static_shader_inputs(m)
+			_set_uniform_if_present(m, "aspect", aspect)
 
 	# Extras + custom
 	for m in extra_shader_materials:
 		if m:
-			m.set_shader_parameter("aspect", aspect)
-			m.set_shader_parameter("bar_count", spectrum_bar_count)
+			_apply_static_shader_inputs(m)
+			_set_uniform_if_present(m, "aspect", aspect)
 	if _custom_active_material:
-		_custom_active_material.set_shader_parameter("aspect", aspect)
-		_custom_active_material.set_shader_parameter("bar_count", spectrum_bar_count)
+		_apply_static_shader_inputs(_custom_active_material)
+		_set_uniform_if_present(_custom_active_material, "aspect", aspect)
 
 	if material_waterfall:
-		material_waterfall.set_shader_parameter("rows", waterfall_rows)
+		_set_uniform_if_present(material_waterfall, "rows", waterfall_rows)
 	if material_basic_audio_shader:
-		material_basic_audio_shader.set_shader_parameter("wf_rows", waterfall_rows)
+		_set_uniform_if_present(material_basic_audio_shader, "wf_rows", waterfall_rows)
 
 
 # Spectrum
@@ -533,28 +556,19 @@ func _bind_all_material_textures() -> void:
 		material_basic_audio_shader, material_sonic_fusion,
 		material_fractal_colors, material_bubbles
 	]:
-		if m:
-			m.set_shader_parameter("spectrum_tex", _spec_tex)
-			m.set_shader_parameter("bar_count", spectrum_bar_count)
+		_apply_static_shader_inputs(m)
 
 	# Extras
 	for m in extra_shader_materials:
-		if m:
-			m.set_shader_parameter("spectrum_tex", _spec_tex)
-			m.set_shader_parameter("bar_count", spectrum_bar_count)
+		_apply_static_shader_inputs(m)
 
 	# Custom active (if any)
-	if _custom_active_material:
-		_custom_active_material.set_shader_parameter("spectrum_tex", _spec_tex)
-		_custom_active_material.set_shader_parameter("bar_count", spectrum_bar_count)
+	_apply_static_shader_inputs(_custom_active_material)
 
 	if material_waterfall:
-		material_waterfall.set_shader_parameter("waterfall_tex", _wf_tex)
-		material_waterfall.set_shader_parameter("bar_count", spectrum_bar_count)
-		material_waterfall.set_shader_parameter("rows", waterfall_rows)
+		_set_uniform_if_present(material_waterfall, "rows", waterfall_rows)
 	if material_basic_audio_shader:
-		material_basic_audio_shader.set_shader_parameter("waterfall_tex", _wf_tex)
-		material_basic_audio_shader.set_shader_parameter("wf_rows", waterfall_rows)
+		_set_uniform_if_present(material_basic_audio_shader, "wf_rows", waterfall_rows)
 
 # -----------------------------------------------------------------------------------
 # Tracklist overlay implementation (NEW)
