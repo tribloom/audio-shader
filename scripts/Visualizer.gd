@@ -255,8 +255,14 @@ func _input(event: InputEvent) -> void:
 		if player.stream:
 			player.play()
 			started = true
-	if event is InputEventKey and event.pressed and event.keycode == KEY_C:
-		_toggle_mode()
+	if event is InputEventKey and event.pressed and !event.echo:
+		match event.keycode:
+			KEY_C:
+				_toggle_mode()
+			KEY_RIGHT:
+				_skip_to_next_cue()
+			KEY_LEFT:
+				_skip_to_previous_cue()
 
 func _toggle_mode() -> void:
 	match mode:
@@ -842,3 +848,47 @@ func _notification_tracklist_restyle() -> void:
 			_title_label.offset_top = _title_label.offset_bottom - overlay_font_size
 	_position_time_label()
 	_update_overlay_visibility()
+
+
+func _skip_to_next_cue() -> void:
+	if _cues.is_empty() or player == null or player.stream == null:
+		return
+
+	var now := player.get_playback_position()
+	var idx := _find_current_cue_index(now)
+	if idx == -1:
+		return
+
+	var next_idx := idx + 1
+	while next_idx < _cues.size() and float(_cues[next_idx]["t"]) <= now + 0.05:
+		next_idx += 1
+	if next_idx >= _cues.size():
+		return
+	_seek_to_cue(next_idx)
+
+
+func _skip_to_previous_cue() -> void:
+	if _cues.is_empty() or player == null or player.stream == null:
+		return
+
+	var now := player.get_playback_position()
+	var idx := _find_current_cue_index(now)
+	if idx == -1:
+		return
+
+	var cue_time := float(_cues[idx]["t"])
+	var target_idx := idx
+	if now - cue_time <= 1.0:
+		target_idx = max(0, idx - 1)
+
+	_seek_to_cue(target_idx)
+
+
+func _seek_to_cue(idx: int) -> void:
+	if idx < 0 or idx >= _cues.size() or player == null or player.stream == null:
+		return
+
+	var cue = _cues[idx]
+	var t := float(cue["t"])
+	player.seek(t)
+	_update_track_overlay(t)
