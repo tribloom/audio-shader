@@ -11,6 +11,26 @@ extends Node2D
 ## - SONIC_FUSION (torus/lightning shader)
 ##
 
+# ---------- Dynamic shader registry ----------
+@export var extra_shader_names: PackedStringArray = [
+	"HEXAGONE",
+	"ARC_STORM",
+	"ELECTRON_SURGE",
+	"HEX_TERRAIN",
+	"KALEIDOSCOPE_BLOOM",
+	"PARTICLE_CONSTELLATIONS",
+	"VORONOI_PULSE_GRID",
+	"VOXEL_CITYSCAPE",
+	"RIBBON_TRAILS",
+	"ATANS_BEGONE",
+	"OVERSATURATED_WEB"
+]      # e.g. ["ARCS", "STARFIELD"]
+@export var extra_shader_materials: Array[ShaderMaterial] = []  # same length as names
+
+var _name_to_mode: Dictionary = {}          # "CHROMA" -> Mode.CHROMA
+var _name_to_material: Dictionary = {}      # "ARCS"   -> ShaderMaterial
+var _custom_active_material: ShaderMaterial = null
+
 @export var target_bus_name: String = "Music"
 @export var analyzer_slot: int = 0
 
@@ -37,19 +57,20 @@ extends Node2D
 @export var material_aurora:       ShaderMaterial
 @export var material_universe:     ShaderMaterial
 @export var material_universe_alt: ShaderMaterial
-@export var material_basic_audio_shader: ShaderMaterial   # NEW
-@export var material_sonic_fusion:     ShaderMaterial     # NEW
-@export var material_power_particle: ShaderMaterial # NEW
-@export var material_fractal_colors: ShaderMaterial # NEW
-@export var material_bubbles: ShaderMaterial # NEW
+@export var material_basic_audio_shader: ShaderMaterial  
+@export var material_sonic_fusion:     ShaderMaterial    
+@export var material_power_particle: ShaderMaterial 
+@export var material_fractal_colors: ShaderMaterial 
+@export var material_bubbles: ShaderMaterial 
 
 enum Mode {
 	CHROMA, CIRCLE, BARS, LINE, WATERFALL, AURORA, UNIVERSE, UNIVERSE_ALT,
 	BASIC_AUDIO,
-	POWER_PARTICLE, # NEW
+	POWER_PARTICLE,
 	SONIC_FUSION,
 	FRACTAL_COLORS,
-	BUBBLES
+	BUBBLES, 
+	CUSTOM # used only when a non-enum shader is selected by name
 }
 
 @export var start_mode: Mode = Mode.CHROMA
@@ -84,7 +105,7 @@ var _peak_hold: PackedFloat32Array
 var _spec_img: Image
 var _spec_tex: ImageTexture
 
-# Waterfall
+	# Waterfall
 @export var waterfall_rows: int = 256
 var _wf_img: Image
 var _wf_tex: ImageTexture
@@ -127,6 +148,7 @@ enum PlaytimeCorner { UPPER_RIGHT, LOWER_LEFT }
 @export var credit_outline_color: Color = Color(0, 0, 0, 0.85)
 @export var credit_outline_size: int = 2
 
+
 # Internal overlay nodes/resources
 var _title_label: Label
 var _time_label: Label
@@ -140,6 +162,7 @@ var _current_cue_idx: int = -1
 
 func _ready() -> void:
 	mode = start_mode
+	_build_shader_registry()
 	_apply_mode_material()
 
 	player.bus = target_bus_name
@@ -159,6 +182,66 @@ func _ready() -> void:
 	_parse_tracklist()
 	_update_overlay_visibility()
 
+
+
+func _register_shader(name: String, mat: ShaderMaterial, mode_opt = null) -> void:
+	if name == "" or mat == null:
+		return
+	_name_to_material[name.to_upper()] = mat
+	if mode_opt != null:
+		_name_to_mode[name.to_upper()] = mode_opt
+
+func _build_shader_registry() -> void:
+	# Built-ins: names match your enum for easy use in tracklist
+	_register_shader("CHROMA",          material_chromatic,       Mode.CHROMA)
+	_register_shader("CIRCLE",          material_circle,          Mode.CIRCLE)
+	_register_shader("BARS",            material_bars,            Mode.BARS)
+	_register_shader("LINE",            material_line,            Mode.LINE)
+	_register_shader("WATERFALL",       material_waterfall,       Mode.WATERFALL)
+	_register_shader("AURORA",          material_aurora,          Mode.AURORA)
+	_register_shader("UNIVERSE",        material_universe,        Mode.UNIVERSE)
+	_register_shader("UNIVERSE_ALT",    material_universe_alt,    Mode.UNIVERSE_ALT)
+	_register_shader("BASIC_AUDIO",     material_basic_audio_shader, Mode.BASIC_AUDIO)
+	_register_shader("POWER_PARTICLE",  material_power_particle,  Mode.POWER_PARTICLE)
+	_register_shader("SONIC_FUSION",    material_sonic_fusion,    Mode.SONIC_FUSION)
+	_register_shader("FRACTAL_COLORS",  material_fractal_colors,  Mode.FRACTAL_COLORS)
+	_register_shader("BUBBLES",         material_bubbles,         Mode.BUBBLES)
+
+	# Extras from Inspector (names + materials arrays)
+	var n = min(extra_shader_names.size(), extra_shader_materials.size())
+	for i in range(n):
+		_register_shader(extra_shader_names[i], extra_shader_materials[i]) # no enum on purpose
+
+func set_shader_by_name(name: String) -> bool:
+	var key := name.to_upper()
+	if _name_to_mode.has(key):
+		mode = _name_to_mode[key]
+		_apply_mode_material()
+		_update_aspect()
+		return true
+	if _name_to_material.has(key):
+		_custom_active_material = _name_to_material[key]
+		mode = Mode.CUSTOM
+		_apply_mode_material()
+		_update_aspect()
+		return true
+	push_warning("Shader name not found: %s" % name)
+	return false
+
+func _apply_shader_params(params: Dictionary) -> void:
+	var mat := color_rect.material as ShaderMaterial
+	if mat == null: return
+	for k in params.keys():
+		var v = params[k]
+		# Coerce arrays to Godot vectors/colors
+		if v is Array:
+			var a := v as Array
+			if a.size() == 2: v = Vector2(a[0], a[1])
+			elif a.size() == 3: v = Color(a[0], a[1], a[2], 1.0) # works for vec3/color
+			elif a.size() == 4: v = Color(a[0], a[1], a[2], a[3])
+		# Try to set; ignore unknown
+		mat.set_shader_parameter(k, v)
+
 func _init_analyzer() -> void:
 	analyzer = AudioServer.get_bus_effect_instance(bus_idx, analyzer_slot) as AudioEffectSpectrumAnalyzerInstance
 	if analyzer == null:
@@ -174,22 +257,22 @@ func _input(event: InputEvent) -> void:
 
 func _toggle_mode() -> void:
 	match mode:
-		Mode.CHROMA:        mode = Mode.CIRCLE
-		Mode.CIRCLE:        mode = Mode.BARS
-		Mode.BARS:          mode = Mode.LINE
-		Mode.LINE:          mode = Mode.WATERFALL
-		Mode.WATERFALL:     mode = Mode.AURORA
-		Mode.AURORA:        mode = Mode.UNIVERSE
-		Mode.UNIVERSE:      mode = Mode.UNIVERSE_ALT
-		Mode.UNIVERSE_ALT:  mode = Mode.BASIC_AUDIO
-		Mode.BASIC_AUDIO:   mode = Mode.POWER_PARTICLE   # NEW
-		Mode.POWER_PARTICLE:mode = Mode.SONIC_FUSION     # NEW
-		Mode.SONIC_FUSION:  mode = Mode.FRACTAL_COLORS
-		Mode.FRACTAL_COLORS:mode = Mode.BUBBLES
-		Mode.BUBBLES:      mode = Mode.CHROMA
+		Mode.CHROMA:         mode = Mode.CIRCLE
+		Mode.CIRCLE:         mode = Mode.BARS
+		Mode.BARS:           mode = Mode.LINE
+		Mode.LINE:           mode = Mode.WATERFALL
+		Mode.WATERFALL:      mode = Mode.AURORA
+		Mode.AURORA:         mode = Mode.UNIVERSE
+		Mode.UNIVERSE:       mode = Mode.UNIVERSE_ALT
+		Mode.UNIVERSE_ALT:   mode = Mode.BASIC_AUDIO
+		Mode.BASIC_AUDIO:    mode = Mode.POWER_PARTICLE
+		Mode.POWER_PARTICLE: mode = Mode.SONIC_FUSION
+		Mode.SONIC_FUSION:   mode = Mode.FRACTAL_COLORS
+		Mode.FRACTAL_COLORS: mode = Mode.BUBBLES
+		Mode.BUBBLES:        mode = Mode.CHROMA
+		Mode.CUSTOM:         mode = Mode.CHROMA  # never land here by cycling
 	_apply_mode_material()
 	_update_aspect()
-
 
 func _apply_mode_material() -> void:
 	match mode:
@@ -202,12 +285,12 @@ func _apply_mode_material() -> void:
 		Mode.UNIVERSE:          color_rect.material = material_universe
 		Mode.UNIVERSE_ALT:      color_rect.material = material_universe_alt
 		Mode.BASIC_AUDIO:       color_rect.material = material_basic_audio_shader
-		Mode.POWER_PARTICLE:    color_rect.material = material_power_particle   # NEW
+		Mode.POWER_PARTICLE:    color_rect.material = material_power_particle
 		Mode.SONIC_FUSION:      color_rect.material = material_sonic_fusion
 		Mode.FRACTAL_COLORS:    color_rect.material = material_fractal_colors
 		Mode.BUBBLES:           color_rect.material = material_bubbles
+		Mode.CUSTOM:            color_rect.material = _custom_active_material
 	_bind_all_material_textures()
-
 
 func _process(dt: float) -> void:
 	if analyzer == null or color_rect.material == null:
@@ -278,11 +361,27 @@ func _process(dt: float) -> void:
 		Mode.BUBBLES:
 			pass
 
+	var m := color_rect.material as ShaderMaterial
+	if m:
+		_maybe_set(m, "aspect", get_viewport_rect().size.x / max(1.0, get_viewport_rect().size.y))
+		_maybe_set(m, "level_in", clamp(level_sm * level_boost, 0.0, 1.0))
+		_maybe_set(m, "bass_in",  clamp(bass_sm, 0.0, 1.0))
+		_maybe_set(m, "treble_in",clamp(treb_sm, 0.0, 1.0))
+		_maybe_set(m, "tone_in",  clamp(tone_sm, 0.0, 1.0))
+		_maybe_set(m, "kick_env", clamp(_kick_env, 0.0, 1.0))  # for “center flash” beats
+
 	_update_aspect()
 
 	# Overlay time is total elapsed
 	var play_pos := player.get_playback_position()
 	_update_track_overlay(play_pos)
+
+func _maybe_set(m: ShaderMaterial, name: String, v) -> void:
+	if m == null or m.shader == null: return
+	for u in m.shader.get_shader_uniform_list():
+		if u.name == name:
+			m.set_shader_parameter(name, v)
+			return
 
 func _norm_db(db_val: float) -> float:
 	var dmin := db_min
@@ -333,15 +432,27 @@ func _update_aspect() -> void:
 	for m in [
 		material_bars, material_line, material_waterfall, material_aurora,
 		material_universe, material_universe_alt,
-		material_basic_audio_shader, material_sonic_fusion
+		material_basic_audio_shader, material_sonic_fusion,
+		material_fractal_colors, material_bubbles
 	]:
 		if m:
 			m.set_shader_parameter("aspect", aspect)
 			m.set_shader_parameter("bar_count", spectrum_bar_count)
+
+	# Extras + custom
+	for m in extra_shader_materials:
+		if m:
+			m.set_shader_parameter("aspect", aspect)
+			m.set_shader_parameter("bar_count", spectrum_bar_count)
+	if _custom_active_material:
+		_custom_active_material.set_shader_parameter("aspect", aspect)
+		_custom_active_material.set_shader_parameter("bar_count", spectrum_bar_count)
+
 	if material_waterfall:
 		material_waterfall.set_shader_parameter("rows", waterfall_rows)
 	if material_basic_audio_shader:
 		material_basic_audio_shader.set_shader_parameter("wf_rows", waterfall_rows)
+
 
 # Spectrum
 func _setup_spectrum_resources() -> void:
@@ -419,13 +530,24 @@ func _bind_all_material_textures() -> void:
 	for m in [
 		material_bars, material_line, material_aurora,
 		material_universe, material_universe_alt,
-		material_basic_audio_shader,
-		material_sonic_fusion, material_fractal_colors,
-		material_bubbles		
+		material_basic_audio_shader, material_sonic_fusion,
+		material_fractal_colors, material_bubbles
 	]:
 		if m:
 			m.set_shader_parameter("spectrum_tex", _spec_tex)
 			m.set_shader_parameter("bar_count", spectrum_bar_count)
+
+	# Extras
+	for m in extra_shader_materials:
+		if m:
+			m.set_shader_parameter("spectrum_tex", _spec_tex)
+			m.set_shader_parameter("bar_count", spectrum_bar_count)
+
+	# Custom active (if any)
+	if _custom_active_material:
+		_custom_active_material.set_shader_parameter("spectrum_tex", _spec_tex)
+		_custom_active_material.set_shader_parameter("bar_count", spectrum_bar_count)
+
 	if material_waterfall:
 		material_waterfall.set_shader_parameter("waterfall_tex", _wf_tex)
 		material_waterfall.set_shader_parameter("bar_count", spectrum_bar_count)
@@ -433,7 +555,6 @@ func _bind_all_material_textures() -> void:
 	if material_basic_audio_shader:
 		material_basic_audio_shader.set_shader_parameter("waterfall_tex", _wf_tex)
 		material_basic_audio_shader.set_shader_parameter("wf_rows", waterfall_rows)
-		# head_norm set per-frame in _process()
 
 # -----------------------------------------------------------------------------------
 # Tracklist overlay implementation (NEW)
@@ -559,16 +680,44 @@ func _parse_tracklist() -> void:
 		var line := raw_line.strip_edges()
 		if line == "" or line.begins_with("#"):
 			continue
-		# Split on first space only (titles may contain " - " etc.)
+
 		var sp := line.find(" ")
 		if sp < 0:
 			continue
+
 		var ts := line.substr(0, sp).strip_edges()
-		var title := line.substr(sp + 1).strip_edges()
+		var rest := line.substr(sp + 1).strip_edges()
+
+		var title := rest
+		var shader_name := ""
+		var params := {}
+
+		# Look for directives after '|'
+		if rest.find("|") >= 0:
+			var parts := rest.split("|")
+			title = parts[0].strip_edges()
+			for i in range(1, parts.size()):
+				var seg := parts[i].strip_edges()
+				if seg.begins_with("shader="):
+					shader_name = seg.substr("shader=".length()).strip_edges()
+				elif seg.begins_with("set="):
+					var json_txt := seg.substr("set=".length()).strip_edges()
+					var obj = JSON.parse_string(json_txt)
+					if typeof(obj) == TYPE_DICTIONARY:
+						params = obj
+					else:
+						push_warning("Bad JSON in set=: %s" % json_txt)
+
 		var sec := _parse_timestamp_to_seconds(ts)
 		if sec < 0.0:
 			continue
-		_cues.append({ "t": sec, "title": title })
+
+		_cues.append({
+			"t": sec,
+			"title": title,
+			"shader": shader_name,
+			"params": params
+		})
 
 	_cues.sort_custom(func(a, b): return a["t"] < b["t"])
 	_current_cue_idx = -1
@@ -622,9 +771,7 @@ func _find_current_cue_index(now_sec: float) -> int:
 
 func _update_track_overlay(now_sec: float) -> void:
 	_update_overlay_visibility()
-	if not overlay_enabled:
-		return
-	if _title_label == null or _time_label == null:
+	if not overlay_enabled or _title_label == null or _time_label == null:
 		return
 
 	if _cues.is_empty():
@@ -633,9 +780,19 @@ func _update_track_overlay(now_sec: float) -> void:
 		var idx := _find_current_cue_index(now_sec)
 		if idx != _current_cue_idx:
 			_current_cue_idx = idx
-			_title_label.text = String(_cues[idx]["title"])
+			var cue = _cues[idx]
+			_title_label.text = String(cue["title"])
+
+			# --- NEW: apply shader + params if present ---
+			var sh := String(cue.get("shader", ""))
+			if sh != "":
+				set_shader_by_name(sh)
+			var p = cue.get("params", {})
+			if p is Dictionary and (p as Dictionary).size() > 0:
+				_apply_shader_params(p)
 
 	_time_label.text = _format_clock(now_sec)
+
 
 func _notification_tracklist_restyle() -> void:
 	# Re-apply settings

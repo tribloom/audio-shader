@@ -1,13 +1,13 @@
-0:00 Shadows in Motion
-5:23 Pulse Vector
-11:18 Infinite Journey
-16:51 One More Night
-23:45 Take Me Away
-29:31 Shadows Fade Away
-35:50 Digital Dawn
-42:22 Overclock
-48:44 Orbiting Minds
-53:01 Return to Light
-54:01 Electric Heartbeat
-55:01 In My Dreams
-56:01 Frequency Beyond Control
+0:00 Shadows in Motion | shader=AURORA
+5:01 Pulse Vector | shader=CIRCLE
+10:05 Infinite Journey | shader=BARS
+13:41 One More Night | shader=SONIC_FUSION
+18:22 Take Me Away | shader=CHROMA
+22:25 Shadows Fade Away | shader=UNIVERSE
+25:20 Digital Dawn | shader=WATERFALL
+27:07 Overclock | shader=WATERFALL
+29:19 Orbiting Minds | shader=POWER_PARTICLE
+33:40 Return to Light | shader=CIRCLE
+36:14 Electric Heartbeat | shader=SONIC_FUSION
+39:15 In My Dreams | shader=UNIVERSE
+44:21 Frequency Beyond Control | shader=POWER_PARTICLE
