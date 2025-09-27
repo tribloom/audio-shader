@@ -42,7 +42,41 @@ extends Node2D
 @export var material_power_particle: ShaderMaterial # NEW
 @export var material_fractal_colors: ShaderMaterial # NEW
 @export var material_bubbles: ShaderMaterial # NEW
-@export var custom_materials: Array[ShaderMaterial] = [] # optional extra shader materials to bind
+
+var _custom_materials: Array[ShaderMaterial] = []
+# Optional extra shader materials to bind with the analyzer-driven uniforms.
+# Use `register_custom_material()` at runtime so bindings refresh automatically.
+@export var custom_materials: Array[ShaderMaterial]:
+        set(value):
+                _custom_materials = value.duplicate()
+                _mark_materials_dirty()
+                if is_inside_tree():
+                        _refresh_bound_materials()
+                        _bind_all_material_textures()
+        get:
+                return _custom_materials.duplicate()
+
+func register_custom_material(mat: ShaderMaterial) -> void:
+        if mat == null:
+                return
+        if _custom_materials.has(mat):
+                return
+        _custom_materials.append(mat)
+        _mark_materials_dirty()
+        if is_inside_tree():
+                _refresh_bound_materials()
+                _bind_all_material_textures()
+
+func unregister_custom_material(mat: ShaderMaterial) -> void:
+        if mat == null:
+                return
+        if !_custom_materials.has(mat):
+                return
+        _custom_materials.erase(mat)
+        _mark_materials_dirty()
+        if is_inside_tree():
+                _refresh_bound_materials()
+                _bind_all_material_textures()
 
 enum Mode {
 	CHROMA, CIRCLE, BARS, LINE, WATERFALL, AURORA, UNIVERSE, UNIVERSE_ALT,
@@ -94,28 +128,46 @@ var _wf_head: int = 0
 # Cache of shader parameter availability so we can safely broadcast
 # uniforms to any bound materials (built-in or custom).
 var _shader_param_cache: Dictionary = {}
+var _bound_materials: Array[ShaderMaterial] = []
+var _materials_dirty := true
 
-func _append_material_unique(list: Array[ShaderMaterial], mat: ShaderMaterial) -> void:
-        if mat == null:
-                return
-        if !list.has(mat):
-                list.append(mat)
-
-func _all_materials() -> Array[ShaderMaterial]:
-        var mats: Array[ShaderMaterial] = []
-        for mat in [
+func _built_in_materials() -> Array[ShaderMaterial]:
+        return [
                 material_chromatic, material_circle, material_bars, material_line,
                 material_waterfall, material_aurora, material_universe,
                 material_universe_alt, material_basic_audio_shader,
                 material_sonic_fusion, material_power_particle,
                 material_fractal_colors, material_bubbles
-        ]:
-                _append_material_unique(mats, mat)
-        for mat in custom_materials:
-                _append_material_unique(mats, mat)
+        ]
+
+func _mark_materials_dirty() -> void:
+        _materials_dirty = true
+
+func _refresh_bound_materials() -> void:
+        _materials_dirty = false
+        _bound_materials.clear()
+        _shader_param_cache.clear()
+        var seen: Dictionary = {}
+
+        for mat in _built_in_materials():
+                _append_bound_material(mat, seen)
+        for mat in _custom_materials:
+                _append_bound_material(mat, seen)
         if color_rect and color_rect.material is ShaderMaterial:
-                _append_material_unique(mats, color_rect.material as ShaderMaterial)
-        return mats
+                _append_bound_material(color_rect.material as ShaderMaterial, seen)
+
+func _ensure_bound_materials() -> void:
+        if _materials_dirty:
+                _refresh_bound_materials()
+
+func _append_bound_material(mat: ShaderMaterial, seen: Dictionary) -> void:
+        if mat == null:
+                return
+        var key := mat.get_instance_id()
+        if seen.has(key):
+                return
+        seen[key] = true
+        _bound_materials.append(mat)
 
 func _material_supports_parameter(mat: ShaderMaterial, param: StringName) -> bool:
         if mat == null or mat.shader == null:
@@ -146,7 +198,8 @@ func _update_audio_uniforms() -> void:
         var ring_age_val := clamp(_ring_age, 0.0, 1.0)
         var kick_in_val := clamp(kick_sm, 0.0, 1.0)
         var head_norm := float(_wf_head) / float(max(1, waterfall_rows))
-        for mat in _all_materials():
+        _ensure_bound_materials()
+        for mat in _bound_materials:
                 _set_param_if_supported(mat, "level", level_val)
                 _set_param_if_supported(mat, "audio_level", level_val)
                 _set_param_if_supported(mat, "kick", kick_val)
@@ -271,10 +324,12 @@ func _apply_mode_material() -> void:
 		Mode.UNIVERSE_ALT:      color_rect.material = material_universe_alt
 		Mode.BASIC_AUDIO:       color_rect.material = material_basic_audio_shader
 		Mode.POWER_PARTICLE:    color_rect.material = material_power_particle   # NEW
-		Mode.SONIC_FUSION:      color_rect.material = material_sonic_fusion
-		Mode.FRACTAL_COLORS:    color_rect.material = material_fractal_colors
-		Mode.BUBBLES:           color_rect.material = material_bubbles
-	_bind_all_material_textures()
+                Mode.SONIC_FUSION:      color_rect.material = material_sonic_fusion
+                Mode.FRACTAL_COLORS:    color_rect.material = material_fractal_colors
+                Mode.BUBBLES:           color_rect.material = material_bubbles
+        _mark_materials_dirty()
+        _refresh_bound_materials()
+        _bind_all_material_textures()
 
 
 func _process(dt: float) -> void:
@@ -366,7 +421,8 @@ func _update_aspect() -> void:
         if s.y <= 0.0: return
         var aspect := s.x / s.y
 
-        for mat in _all_materials():
+        _ensure_bound_materials()
+        for mat in _bound_materials:
                 _set_param_if_supported(mat, "aspect", aspect)
                 _set_param_if_supported(mat, "bar_count", spectrum_bar_count)
                 _set_param_if_supported(mat, "rows", waterfall_rows)
@@ -445,8 +501,8 @@ func _update_kick_envelope(dt: float) -> void:
 
 # Bind textures once
 func _bind_all_material_textures() -> void:
-        _shader_param_cache.clear()
-        for mat in _all_materials():
+        _ensure_bound_materials()
+        for mat in _bound_materials:
                 _set_param_if_supported(mat, "spectrum_tex", _spec_tex)
                 _set_param_if_supported(mat, "bar_count", spectrum_bar_count)
                 _set_param_if_supported(mat, "waterfall_tex", _wf_tex)
