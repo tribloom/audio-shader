@@ -487,6 +487,12 @@ tracklist_path = "res://test2.txt"
 stream = ExtResource("14_l1rbe")
 bus = &"Music"
 
+[node name="AudioFileDialog" type="FileDialog" parent="."]
+title = "Select audio file"
+size = Vector2i(900, 600)
+access = 2
+filters = PackedStringArray("*.ogg ; Ogg Audio", "*.mp3 ; MP3 Audio", "*.wav ; WAV Audio")
+
 [node name="CanvasLayer" type="CanvasLayer" parent="."]
 
 [node name="ColorRect" type="ColorRect" parent="CanvasLayer"]
