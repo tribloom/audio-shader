@@ -23,7 +23,8 @@ extends Node2D
 	"VOXEL_CITYSCAPE",
 	"RIBBON_TRAILS",
 	"ATANS_BEGONE",
-	"OVERSATURATED_WEB"
+	"OVERSATURATED_WEB",
+	"JASZ_UNIVERSE","BARS_PLUS"
 ]      # e.g. ["ARCS", "STARFIELD"]
 @export var extra_shader_materials: Array[ShaderMaterial] = []  # same length as names
 
@@ -263,6 +264,8 @@ func _input(event: InputEvent) -> void:
 				_skip_to_next_cue()
 			KEY_LEFT:
 				_skip_to_previous_cue()
+			KEY_O:
+				overlay_enabled = !overlay_enabled
 
 func _toggle_mode() -> void:
 	match mode:

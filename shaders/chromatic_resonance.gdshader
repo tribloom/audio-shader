@@ -5,6 +5,10 @@ uniform float level : hint_range(0.0, 1.0) = 0.0;
 uniform float kick  : hint_range(0.0, 1.0) = 0.0;
 uniform float aspect = 1.7777778; // 16:9 as a literal
 
+// If you set this to >0, it overrides `aspect` and prevents any script
+// from forcing you back to 16:9. Leave -1.0 to use `aspect` normally.
+uniform float locked_aspect = -1.0;
+
 uniform float music_reaction = 0.8;  // overall sensitivity
 
 float S(float a, float b, float c) { return smoothstep(a, b, c); }
@@ -60,9 +64,16 @@ float line_fn(vec2 uv, float t, float scroll) {
 }
 
 void fragment() {
+	// Use the aspect you set. If `locked_aspect` > 0, it wins.
+	float asp = (locked_aspect > 0.0) ? locked_aspect : aspect;
+
 	// UV is 0..1 across the ColorRect. Center it and apply aspect.
 	vec2 uv = UV * 2.0 - 1.0;   // now ~[-1,1]
-	uv.x *= aspect;
+	uv.x *= asp;
+
+	// Keep 16:9 identical; adjust constants when aspect differs.
+	const float ASPECT_REF = 1.7777778; // 16/9
+	float A = asp / ASPECT_REF;
 
 	// Audio reactivity
 	float amp_main = music_reaction * (0.25 + level * 1.25);
@@ -81,16 +92,17 @@ void fragment() {
 	float w4 = (sin(TIME * 1.2 + 2.0) + level * 2.2) * 0.24 * amp_main;
 
 	float lum = 0.0;
-	lum += line_fn(uv * vec2(2.0, 1.0)   + vec2(0.00, w0), t0, 0.10) * 0.60;
-	lum += line_fn(uv * vec2(1.5, 0.9)   + vec2(0.33, w1), t1, 0.15) * 0.50;
-	lum += line_fn(uv * vec2(1.3, 1.2)   + vec2(0.66, w2), t2, 0.20) * 0.30;
-	lum += line_fn(uv * vec2(1.5, 1.15)  + vec2(0.80, w3), t3, 0.23) * 0.43;
-	lum += line_fn(uv * vec2(1.5, 1.15)  + vec2(0.80, w4), t4, 0.30) * 0.25;
+	// Scale X offsets and scroll by A so composition stays the same across aspects
+	lum += line_fn(uv * vec2(2.0, 1.0)   + vec2(0.00 * A, w0), t0, 0.10 * A) * 0.60;
+	lum += line_fn(uv * vec2(1.5, 0.9)   + vec2(0.33 * A, w1), t1, 0.15 * A) * 0.50;
+	lum += line_fn(uv * vec2(1.3, 1.2)   + vec2(0.66 * A, w2), t2, 0.20 * A) * 0.30;
+	lum += line_fn(uv * vec2(1.5, 1.15)  + vec2(0.80 * A, w3), t3, 0.23 * A) * 0.43;
+	lum += line_fn(uv * vec2(1.5, 1.15)  + vec2(0.80 * A, w4), t4, 0.30 * A) * 0.25;
 
 	float ax = abs(uv.x);
 	lum += ax * ax * 0.05;
 
-	// Hue sweep (use TAU instead of redefining 2*PI)
+	// Hue sweep (use TAU)
 	float xh = uv.x * 1.2 + TIME * (0.2 + level * 0.6);
 	vec3 hue = (sin(vec3(xh, xh + TAU * 0.33, xh + TAU * 0.66)) + vec3(1.0)) * 0.7;
 
