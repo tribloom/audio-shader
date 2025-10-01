@@ -147,16 +147,29 @@ vec2 noff6(int i){
 
 /* ------- AUDIO COLOR TINT ------- */
 /* build a gentle RGB tint from bass/mid/treble */
+vec3 hsv2rgb(vec3 c){
+        vec3 rgb = clamp(abs(mod(c.x * 6.0 + vec3(0.0, 4.0, 2.0), 6.0) - 3.0) - 1.0, 0.0, 1.0);
+        rgb = rgb * rgb * (3.0 - 2.0 * rgb);
+        return c.z * mix(vec3(1.0), rgb, c.y);
+}
+
+vec3 spectrum_color(float idx){
+        if (!audio_enabled || bar_count <= 0) return vec3(0.0);
+        float u = clamp(idx / max(float(bar_count - 1), 1.0), 0.0, 1.0);
+        return hsv2rgb(vec3(u, 1.0, 1.0));
+}
+
+
 vec3 spectrum_tint(){
-	if (!audio_enabled || bar_count <= 0) return vec3(0.0);
-	// low=[0..0.25), mid=[0.25..0.65), hi=[0.65..1]
-	float lo  = band_avg(0.00, 0.25);
-	float mid = band_avg(0.25, 0.65);
-	float hi  = band_avg(0.65, 1.00);
+       if (!audio_enabled || bar_count <= 0) return vec3(0.0);
+        // low=[0..0.25), mid=[0.25..0.65), hi=[0.65..1]
+        float lo  = band_avg(0.00, 0.25);
+        float mid = band_avg(0.25, 0.65);
+        float hi  = band_avg(0.65, 1.00);
 	// mild companding + gain so small signals still show
-	lo  = pow(lo  * audio_gain, 0.6);
-	mid = pow(mid * audio_gain, 0.6);
-	hi  = pow(hi  * audio_gain, 0.6);
+        lo  = pow(lo  * audio_gain, 0.55);
+        mid = pow(mid * audio_gain, 0.55);
+        hi  = pow(hi  * audio_gain, 0.55);
 	return normalize(vec3(lo, mid, hi) + 1e-6); // direction only
 }
 
@@ -180,23 +193,39 @@ vec4 plane(vec3 ro, vec3 rd, vec3 pp, vec3 off, float aa, float n, vec3 tint){
 	vec3 bcol = 0.5 * (1.0 + cos(vec3(0.0, 1.0, 2.0) + 2.0*(p2.x*p2.y + p2.x) - 0.33*n));
 
 	// add subtle spectrum tint
-	bcol = normalize(bcol + color_mix * tint);
+	       bcol = normalize(bcol + 0.6 * color_mix * tint);
 
 	vec3 col = vec3(0.0);
 
-	for (int i=0;i<6;i++){
-		float h1 = hash(hn + noff6(i) + n);
-		vec2 p1  = off6(i) + coff(h1);
-		float h2 = h0 + h1;
-		float fade = smoothstep(1.05, 0.85, distance(p0, p1));
-		if (fade < 0.0125) continue;
+        for (int i=0;i<6;i++){
+                float h1 = hash(hn + noff6(i) + n);
+                vec2 p1  = off6(i) + coff(h1);
+                float h2 = h0 + h1;
+                float fade = smoothstep(1.05, 0.85, distance(p0, p1));
+                if (fade < 0.0125) continue;
 
-		vec2 cp = 0.5*(p1 + p0) + coff(h2);
-		float dd = bezier(hp, p0, cp, p1);
+                vec2 cp = 0.5*(p1 + p0) + coff(h2);
+                float dd = bezier(hp, p0, cp, p1);
 
-		float gd = max(abs(dd) * sqrt(abs(dd)), 0.0005);
-		col += fade * 0.002 * bcol / gd;
-	}
+                float base_gd = max(abs(dd) * sqrt(abs(dd)), 0.0005);
+                vec3 line_col = bcol;
+                float amp = 0.0;
+                if (audio_enabled && bar_count > 0){
+                        float bar_f = fract(h2);
+                        int bar_idx = clamp(int(floor(bar_f * float(bar_count))), 0, bar_count - 1);
+                        amp = clamp(pow(bar_at_index(bar_idx) * audio_gain, 0.5), 0.0, 1.0);
+                        vec3 spec_col = spectrum_color(float(bar_idx));
+                        float hue_mix = mix(0.35, 1.0, amp);
+                        line_col = normalize(mix(line_col, spec_col, color_mix * hue_mix));
+                        float accent = mix(0.2, 0.75, amp);
+                        col += fade * accent * color_mix * spec_col / (base_gd * mix(1.0, 0.75, amp));
+                }
+                float width_scale = mix(1.0, 0.55, amp);
+                float gd = max(base_gd * width_scale, 0.00035);
+                float glow = mix(1.0, 1.45, amp);
+                line_col *= mix(1.0, 1.35, amp);
+                col += glow * fade * 0.0022 * line_col / gd;
+        }
 	{
 		float gd = max(length(hp - p0) * length(hp - p0), 0.0005);
 		col += 0.0025 * sqrt(bcol) / gd;

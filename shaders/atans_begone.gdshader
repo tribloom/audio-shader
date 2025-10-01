@@ -184,21 +184,45 @@ vec3 tunnel_color(vec3 ww, vec3 uu, vec3 vv, vec3 ro, vec2 p){
 /* -------- center tint BEFORE tone mapping -------- */
 vec3 apply_center_tint(vec3 col, vec3 rd, vec3 ww, vec4 bands, float drive){
     // center mask: how parallel this pixel ray is to the forward vector
-    float center_mask = pow(max(dot(rd, ww), 0.0), center_focus);
+     float align = max(dot(rd, ww), 0.0);
 
-    // pick dominant band color (discrete for readability)
-    vec3 band_col = bass_color;
-    float mv = bands.x;
-    if (bands.y > mv){ mv = bands.y; band_col = mid_color; }
-    if (bands.z > mv){               band_col = treb_color; }
+    // pick dominant band color (boosted weights favour the "winning" band)
+    vec3 band_energy = max(bands.xyz, vec3(0.0));
+    float max_band = max(max(band_energy.x, band_energy.y), band_energy.z);
+    vec3 band_weight = vec3(0.0);
+    if (max_band > 0.0){
+        band_weight = pow(band_energy / max_band, vec3(4.0));
+    }
+
+    float w_sum = band_weight.x + band_weight.y + band_weight.z;
+    vec3 band_col;
+    if (w_sum > 0.0){
+        band_col = (band_weight.x * bass_color
+                 + band_weight.y * mid_color
+                 + band_weight.z * treb_color) / w_sum;
+    } else {
+        band_col = bass_color;
+    }
 
     // flash amount from beat/level
     float k = max(kick_env, level_in);
     float flash = flash_gain * pow(k, flash_exp) * drive;
 
+    // Wider bursts for stronger hits (smaller exponent -> larger mask)
+    float flash_norm = clamp(flash, 0.0, 1.5);
+    float focus_min = max(center_focus * 0.25, 1.0);
+    float focus_dynamic = mix(center_focus, focus_min, clamp(flash_norm, 0.0, 1.0));
+    float center_mask = pow(align, focus_dynamic);
+    float halo_mask = pow(align, max(focus_dynamic * 0.5, 1.0));
+	
     // *** IMPORTANT: mix BEFORE tonemapping so it actually tints the near-white core ***
-    float amt = center_mask * flash;
+        float amt = center_mask * (0.5 + flash_norm);
     col = mix(col, band_col, clamp(amt, 0.0, 1.0));
+
+    // Kick a bright, colourised bloom in the centre. Strong hits spill wider.
+    float flash_add = flash * flash;
+    col += band_col * (center_mask * flash_add * 1.2);
+    col += band_col * (halo_mask   * flash_add * 0.8);
 
     // slight global breathing
     col = mix(col, col + 0.25 * band_col, accent_mix * drive);
