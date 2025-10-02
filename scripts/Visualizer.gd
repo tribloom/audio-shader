@@ -214,6 +214,7 @@ func _ready() -> void:
 
 
 
+
 func _register_shader(name: String, mat: ShaderMaterial, mode_opt = null) -> void:
 	if name == "" or mat == null:
 		return
@@ -284,6 +285,7 @@ func _input(event: InputEvent) -> void:
 			started = true
 	if event is InputEventKey and event.pressed and !event.echo:
 		match event.keycode:
+
 						KEY_C:
 								_toggle_mode()
 						KEY_RIGHT:
@@ -414,6 +416,7 @@ func _apply_mode_material() -> void:
 		match mode:
 				Mode.CHROMA:            color_rect.material = material_chromatic
 				Mode.CIRCLE:            color_rect.material = material_circle
+
 		Mode.BARS:              color_rect.material = material_bars
 		Mode.LINE:              color_rect.material = material_line
 		Mode.WATERFALL:         color_rect.material = material_waterfall
@@ -572,6 +575,7 @@ func _compute_tone_norm() -> float:
 	return clamp(t, 0.0, 1.0)
 
 func _notification(what: int) -> void:
+
 		if what == NOTIFICATION_WM_SIZE_CHANGED:
 				var size := DisplayServer.window_get_size()
 				if size.x > 0 and size.y > 0:
@@ -582,6 +586,7 @@ func _notification(what: int) -> void:
 								_portrait_size = size
 								_using_portrait = true
 				_update_aspect()
+
 
 func _update_aspect() -> void:
 	var s := get_viewport_rect().size
@@ -821,6 +826,7 @@ func _parse_tracklist() -> void:
 		_manual_track_title = ""
 		var lines: PackedStringArray = []
 
+
 	if tracklist_path != "":
 		var f := FileAccess.open(tracklist_path, FileAccess.READ)
 		if f:
@@ -881,6 +887,7 @@ func _parse_tracklist() -> void:
 		if _cues.is_empty():
 				_manual_track_title = previous_manual
 
+
 func _parse_timestamp_to_seconds(ts: String) -> float:
 	# supports M:SS, MM:SS, H:MM:SS
 	var parts := ts.split(":")
@@ -938,6 +945,7 @@ func _update_track_overlay(now_sec: float) -> void:
 		else:
 				var idx := _find_current_cue_index(now_sec)
 				if idx != _current_cue_idx:
+
 			_current_cue_idx = idx
 			var cue = _cues[idx]
 			_title_label.text = String(cue["title"])
