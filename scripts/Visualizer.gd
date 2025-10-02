@@ -78,11 +78,17 @@ enum Mode {
 
 @onready var player: AudioStreamPlayer = $AudioStreamPlayer
 @onready var color_rect: ColorRect = $CanvasLayer/ColorRect
+@onready var audio_file_dialog: FileDialog = $AudioFileDialog
 
 var analyzer: AudioEffectSpectrumAnalyzerInstance
 var bus_idx: int = -1
 var started := false
 var mode: Mode
+
+var _landscape_size := Vector2i.ZERO
+var _portrait_size := Vector2i.ZERO
+var _using_portrait := false
+var _last_audio_dir: String = ""
 
 # Cache shader uniform names for quick lookups when binding parameters.
 var _shader_uniform_cache: Dictionary = {}
@@ -161,30 +167,50 @@ var _label_settings: LabelSettings
 var _credit_settings: LabelSettings
 var _cues: Array = []       # Array of { "t": float, "title": String }
 var _current_cue_idx: int = -1
+var _manual_track_title: String = ""
 
 # -----------------------------------------------------------------------------------
 
 func _ready() -> void:
-	mode = start_mode
-	_build_shader_registry()
-	_apply_mode_material()
+		mode = start_mode
+		_build_shader_registry()
+		_apply_mode_material()
 
-	player.bus = target_bus_name
-	bus_idx = AudioServer.get_bus_index(target_bus_name)
-	if bus_idx == -1:
-		push_error("Bus '%s' not found." % target_bus_name)
-		return
+		var win_size := DisplayServer.window_get_size()
+		if win_size.x <= 0 or win_size.y <= 0:
+				var def_w := int(ProjectSettings.get_setting("display/window/size/viewport_width", 1920))
+				var def_h := int(ProjectSettings.get_setting("display/window/size/viewport_height", 1080))
+				win_size = Vector2i(def_w, def_h)
+		_landscape_size = win_size
+		_portrait_size = Vector2i(win_size.y, win_size.x)
+		_using_portrait = win_size.x < win_size.y
 
-	call_deferred("_init_analyzer")
+		player.bus = target_bus_name
+		bus_idx = AudioServer.get_bus_index(target_bus_name)
+		if bus_idx == -1:
+				push_error("Bus '%s' not found." % target_bus_name)
+				return
 
-	_setup_spectrum_resources()
-	_setup_waterfall_resources()
-	_bind_all_material_textures()
-	_update_aspect()
+		call_deferred("_init_analyzer")
 
-	_build_overlay()
-	_parse_tracklist()
-	_update_overlay_visibility()
+		_setup_spectrum_resources()
+		_setup_waterfall_resources()
+		_bind_all_material_textures()
+		_update_aspect()
+
+		_build_overlay()
+		_parse_tracklist()
+		_update_overlay_visibility()
+
+		if audio_file_dialog:
+				audio_file_dialog.access = FileDialog.ACCESS_FILESYSTEM
+				audio_file_dialog.file_mode = FileDialog.FILE_MODE_OPEN_FILE
+				if audio_file_dialog.filters.is_empty():
+						audio_file_dialog.filters = PackedStringArray(["*.ogg ; Ogg Audio", "*.mp3 ; MP3 Audio", "*.wav ; WAV Audio"])
+				audio_file_dialog.file_selected.connect(_on_audio_file_selected)
+
+		if player.stream:
+				_manual_track_title = _extract_stream_display_name(player.stream)
 
 
 
@@ -258,20 +284,25 @@ func _input(event: InputEvent) -> void:
 			started = true
 	if event is InputEventKey and event.pressed and !event.echo:
 		match event.keycode:
-			KEY_C:
-				_toggle_mode()
-			KEY_RIGHT:
-				_skip_to_next_cue()
-			KEY_LEFT:
-				_skip_to_previous_cue()
-			KEY_O:
-				overlay_enabled = !overlay_enabled
+						KEY_C:
+								_toggle_mode()
+						KEY_RIGHT:
+								_skip_to_next_cue()
+						KEY_LEFT:
+								_skip_to_previous_cue()
+						KEY_O:
+								overlay_enabled = !overlay_enabled
+								_update_overlay_visibility()
+						KEY_R:
+								_toggle_window_orientation()
+						KEY_F:
+								_prompt_for_audio_file()
 
 func _toggle_mode() -> void:
-	match mode:
-		Mode.CHROMA:         mode = Mode.CIRCLE
-		Mode.CIRCLE:         mode = Mode.BARS
-		Mode.BARS:           mode = Mode.LINE
+		match mode:
+				Mode.CHROMA:         mode = Mode.CIRCLE
+				Mode.CIRCLE:         mode = Mode.BARS
+				Mode.BARS:           mode = Mode.LINE
 		Mode.LINE:           mode = Mode.WATERFALL
 		Mode.WATERFALL:      mode = Mode.AURORA
 		Mode.AURORA:         mode = Mode.UNIVERSE
@@ -283,13 +314,106 @@ func _toggle_mode() -> void:
 		Mode.FRACTAL_COLORS: mode = Mode.BUBBLES
 		Mode.BUBBLES:        mode = Mode.CHROMA
 		Mode.CUSTOM:         mode = Mode.CHROMA  # never land here by cycling
-	_apply_mode_material()
-	_update_aspect()
+		_apply_mode_material()
+		_update_aspect()
+
+func _toggle_window_orientation() -> void:
+		var target := Vector2i.ZERO
+		if _using_portrait:
+				target = _landscape_size
+		else:
+				target = _portrait_size
+				if target == Vector2i.ZERO:
+						var current := DisplayServer.window_get_size()
+						if current.x > 0 and current.y > 0:
+								target = Vector2i(current.y, current.x)
+						else:
+								var def_w := int(ProjectSettings.get_setting("display/window/size/viewport_width", 1920))
+								var def_h := int(ProjectSettings.get_setting("display/window/size/viewport_height", 1080))
+								target = Vector2i(def_h, def_w)
+						_portrait_size = target
+		if target != Vector2i.ZERO:
+				DisplayServer.window_set_size(target)
+				_update_aspect()
+
+func _prompt_for_audio_file() -> void:
+		if audio_file_dialog == null:
+				return
+		var start_dir := _last_audio_dir
+		if start_dir == "":
+				start_dir = OS.get_user_data_dir()
+		audio_file_dialog.current_dir = start_dir
+		audio_file_dialog.popup_centered()
+
+func _on_audio_file_selected(path: String) -> void:
+		var stream := _load_audio_stream_from_path(path)
+		if stream == null:
+				push_warning("Failed to load audio file: %s" % path)
+				return
+		_last_audio_dir = path.get_base_dir()
+		var file_name := path.get_file()
+		var base_name := file_name.get_basename()
+		stream.resource_name = file_name
+		player.stop()
+		player.stream = stream
+		player.play()
+		started = true
+
+		if tracklist_path == "":
+				var guessed := _guess_tracklist_path_for_audio(path)
+				if guessed != "":
+						tracklist_path = guessed
+		_parse_tracklist()
+		if _cues.is_empty():
+				_manual_track_title = base_name
+		else:
+				_manual_track_title = ""
+
+		_current_cue_idx = -1
+		_update_track_overlay(0.0)
+
+func _load_audio_stream_from_path(path: String) -> AudioStream:
+		var ext := path.get_extension().to_lower()
+		match ext:
+				"ogg":
+						return AudioStreamOggVorbis.load_from_file(path)
+				"wav":
+						return AudioStreamWAV.load_from_file(path)
+				"mp3":
+						var bytes := FileAccess.get_file_as_bytes(path)
+						if bytes.is_empty():
+								return null
+						var mp3 := AudioStreamMP3.new()
+						mp3.data = bytes
+						return mp3
+				_:
+						push_warning("Unsupported audio format: %s" % ext)
+						return null
+
+func _guess_tracklist_path_for_audio(path: String) -> String:
+		var base := path.get_basename()
+		var candidates := PackedStringArray([
+				base + ".tracklist",
+				base + ".txt"
+		])
+		for candidate in candidates:
+				if FileAccess.file_exists(candidate):
+						return candidate
+		return ""
+
+func _extract_stream_display_name(stream: AudioStream) -> String:
+		if stream == null:
+				return ""
+		if stream.resource_path != "":
+				return stream.resource_path.get_file().get_basename()
+		if stream.resource_name != "":
+				return stream.resource_name
+		return ""
 
 func _apply_mode_material() -> void:
-	match mode:
-		Mode.CHROMA:            color_rect.material = material_chromatic
-		Mode.CIRCLE:            color_rect.material = material_circle
+		match mode:
+				Mode.CHROMA:            color_rect.material = material_chromatic
+				Mode.CIRCLE:            color_rect.material = material_circle
 		Mode.BARS:              color_rect.material = material_bars
 		Mode.LINE:              color_rect.material = material_line
 		Mode.WATERFALL:         color_rect.material = material_waterfall
@@ -448,8 +572,16 @@ func _compute_tone_norm() -> float:
 	return clamp(t, 0.0, 1.0)
 
 func _notification(what: int) -> void:
-	if what == NOTIFICATION_WM_SIZE_CHANGED:
-		_update_aspect()
+		if what == NOTIFICATION_WM_SIZE_CHANGED:
+				var size := DisplayServer.window_get_size()
+				if size.x > 0 and size.y > 0:
+						if size.x >= size.y:
+								_landscape_size = size
+								_using_portrait = false
+						else:
+								_portrait_size = size
+								_using_portrait = true
+				_update_aspect()
 
 func _update_aspect() -> void:
 	var s := get_viewport_rect().size
@@ -684,8 +816,10 @@ func _update_overlay_visibility() -> void:
 	if _credit_label: _credit_label.visible = v and credit_enabled
 
 func _parse_tracklist() -> void:
-	_cues.clear()
-	var lines: PackedStringArray = []
+		var previous_manual := _manual_track_title
+		_cues.clear()
+		_manual_track_title = ""
+		var lines: PackedStringArray = []
 
 	if tracklist_path != "":
 		var f := FileAccess.open(tracklist_path, FileAccess.READ)
@@ -742,8 +876,10 @@ func _parse_tracklist() -> void:
 			"params": params
 		})
 
-	_cues.sort_custom(func(a, b): return a["t"] < b["t"])
-	_current_cue_idx = -1
+		_cues.sort_custom(func(a, b): return a["t"] < b["t"])
+		_current_cue_idx = -1
+		if _cues.is_empty():
+				_manual_track_title = previous_manual
 
 func _parse_timestamp_to_seconds(ts: String) -> float:
 	# supports M:SS, MM:SS, H:MM:SS
@@ -797,11 +933,11 @@ func _update_track_overlay(now_sec: float) -> void:
 	if not overlay_enabled or _title_label == null or _time_label == null:
 		return
 
-	if _cues.is_empty():
-		_title_label.text = ""
-	else:
-		var idx := _find_current_cue_index(now_sec)
-		if idx != _current_cue_idx:
+		if _cues.is_empty():
+				_title_label.text = _manual_track_title
+		else:
+				var idx := _find_current_cue_index(now_sec)
+				if idx != _current_cue_idx:
 			_current_cue_idx = idx
 			var cue = _cues[idx]
 			_title_label.text = String(cue["title"])
