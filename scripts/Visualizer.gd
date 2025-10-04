@@ -85,6 +85,15 @@ enum Mode {
 @onready var player: AudioStreamPlayer = $AudioStreamPlayer
 @onready var color_rect: ColorRect = $CanvasLayer/ColorRect
 
+@export_group("Window")
+@export var landscape_resolution: Vector2i = Vector2i(1920, 1080)
+@export var portrait_resolution: Vector2i = Vector2i(1080, 1920)
+@export var start_in_portrait: bool = false
+
+@export_group("")
+
+var _is_portrait: bool = false
+
 var analyzer: AudioEffectSpectrumAnalyzerInstance
 var bus_idx: int = -1
 var started := false
@@ -177,6 +186,9 @@ func _ready() -> void:
 	mode = start_mode
 	_build_shader_registry()
 	_apply_mode_material()
+
+	_is_portrait = start_in_portrait
+	_apply_window_orientation()
 
 	player.bus = target_bus_name
 	bus_idx = AudioServer.get_bus_index(target_bus_name)
@@ -278,6 +290,8 @@ func _input(event: InputEvent) -> void:
 				_skip_to_previous_cue()
 			KEY_O:
 				overlay_enabled = !overlay_enabled
+			KEY_V:
+				_toggle_window_orientation()
 
 func _toggle_mode() -> void:
 	match mode:
@@ -298,6 +312,17 @@ func _toggle_mode() -> void:
 	_apply_mode_material()
 	_update_aspect()
 
+func _toggle_window_orientation() -> void:
+	_is_portrait = !_is_portrait
+	_apply_window_orientation()
+
+func _apply_window_orientation() -> void:
+	var desired = portrait_resolution if _is_portrait else landscape_resolution
+	if desired.x <= 0 or desired.y <= 0:
+		return
+	DisplayServer.window_set_size(desired)
+	_update_aspect()
+		
 func _apply_mode_material() -> void:
 	match mode:
 		Mode.CHROMA:            color_rect.material = material_chromatic
