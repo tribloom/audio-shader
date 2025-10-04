@@ -4,7 +4,7 @@ extends Node
 
 @export var also_check_exe_sets: bool = true               # prefer ./sets beside the exe
 @export var auto_sets_root: String = "user://sets"         # fallback if ./sets not present
-@export var autoplay_on_apply: bool = true                 # start playback when applying a set
+@export var autoplay_on_apply: bool = false                # start playback when applying a set
 
 var _player: AudioStreamPlayer = null
 var _sets: Array = []      # [{name, audio, tracklist}]
@@ -144,6 +144,8 @@ func _apply_set(i: int) -> void:
 			vis.set("tracklist_path", s["tracklist"])
 		if vis.has_method("_parse_tracklist"):
 			vis._parse_tracklist()
+		if vis.has_method("set_paused_playback_position"):
+			vis.set_paused_playback_position(0.0)
 	else:
 		print("[SetsLoader] NOTE: couldn't find Visualizer node for tracklist parsing")
 
@@ -180,11 +182,16 @@ func _load_audio_any(path: String) -> AudioStream:
 # -------------------- Playback helpers --------------------
 func _toggle_play_pause() -> void:
 	if _player == null: return
+	var vis := _find_visualizer_owner()
 	if _player.playing:
 		_paused_pos = 0.0
 		if _player.has_method("get_playback_position"):
 			_paused_pos = _player.get_playback_position()
 		_player.stop()
+		if _paused_pos > 0.0:
+			_player.seek(_paused_pos)
+		if vis != null and vis.has_method("set_paused_playback_position"):
+			vis.set_paused_playback_position(_paused_pos)
 	else:
 		if _player.stream == null:
 			print("[SetsLoader] no stream; choose a set with F6/F7 or rescan F8")
@@ -195,6 +202,20 @@ func _toggle_play_pause() -> void:
 		_paused_pos = 0.0
 
 func _stop_playback() -> void:
-	if _player:
-		_player.stop()
-	_paused_pos = 0.0
+	if _player == null:
+		return
+
+	var vis := _find_visualizer_owner()
+	var cue_pos := 0.0
+	if vis != null and vis.has_method("get_current_cue_start_time"):
+		cue_pos = vis.get_current_cue_start_time()
+	elif _player.has_method("get_playback_position"):
+		cue_pos = _player.get_playback_position()
+
+	_paused_pos = cue_pos
+	_player.stop()
+	if cue_pos > 0.0:
+		_player.seek(cue_pos)
+
+	if vis != null and vis.has_method("set_paused_playback_position"):
+		vis.set_paused_playback_position(cue_pos)
