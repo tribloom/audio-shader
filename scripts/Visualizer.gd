@@ -24,7 +24,11 @@ extends Node2D
 	"RIBBON_TRAILS",
 	"ATANS_BEGONE",
 	"OVERSATURATED_WEB",
-	"JASZ_UNIVERSE","BARS_PLUS"
+	"JASZ_UNIVERSE","BARS_PLUS",
+	"FALLING_STRIPES",
+	"MANDELBOX_SWEEPER",
+	"AUDIO_VISUALIZER",
+	"ABSTRACT_MUSIC"
 ]      # e.g. ["ARCS", "STARFIELD"]
 @export var extra_shader_materials: Array[ShaderMaterial] = []  # same length as names
 
