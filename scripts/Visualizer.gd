@@ -84,6 +84,9 @@ var bus_idx: int = -1
 var started := false
 var mode: Mode
 
+var _last_play_pos: float = 0.0
+var _resume_from_pos: float = 0.0
+
 # Cache shader uniform names for quick lookups when binding parameters.
 var _shader_uniform_cache: Dictionary = {}
 
@@ -252,9 +255,12 @@ func _init_analyzer() -> void:
 		push_error("No SpectrumAnalyzer on bus '%s' slot %d." % [target_bus_name, analyzer_slot])
 
 func _input(event: InputEvent) -> void:
-	if !started and event is InputEventMouseButton and event.pressed:
-		if player.stream:
+	if event is InputEventMouseButton and event.pressed:
+		if player.stream and !player.playing:
 			player.play()
+			if _resume_from_pos > 0.0:
+				player.seek(_resume_from_pos)
+			_resume_from_pos = 0.0
 			started = true
 	if event is InputEventKey and event.pressed and !event.echo:
 		match event.keycode:
@@ -305,12 +311,22 @@ func _apply_mode_material() -> void:
 	_bind_all_material_textures()
 
 func _process(dt: float) -> void:
-	if analyzer == null or color_rect.material == null:
-		_update_track_overlay(0.0)
+	var can_sample := player != null and player.stream != null and player.playing
+	var overlay_time := _last_play_pos
+
+	if !can_sample:
+		_update_track_overlay(overlay_time)
 		return
 
 	if !started:
-		_update_track_overlay(0.0)
+		started = true
+
+	overlay_time = player.get_playback_position()
+	_last_play_pos = overlay_time
+	_resume_from_pos = 0.0
+
+	if analyzer == null or color_rect.material == null:
+		_update_track_overlay(overlay_time)
 		return
 
 	# Bands for CHROMA/CIRCLE smoothing
@@ -384,9 +400,7 @@ func _process(dt: float) -> void:
 
 	_update_aspect()
 
-	# Overlay time is total elapsed
-	var play_pos := player.get_playback_position()
-	_update_track_overlay(play_pos)
+	_update_track_overlay(overlay_time)
 
 func _shader_has_uniform(m: ShaderMaterial, name: String) -> bool:
 	if m == null or m.shader == null:
@@ -744,6 +758,9 @@ func _parse_tracklist() -> void:
 
 	_cues.sort_custom(func(a, b): return a["t"] < b["t"])
 	_current_cue_idx = -1
+	_last_play_pos = 0.0
+	_resume_from_pos = 0.0
+	_update_track_overlay(_last_play_pos)
 
 func _parse_timestamp_to_seconds(ts: String) -> float:
 	# supports M:SS, MM:SS, H:MM:SS
@@ -815,6 +832,21 @@ func _update_track_overlay(now_sec: float) -> void:
 				_apply_shader_params(p)
 
 	_time_label.text = _format_clock(now_sec)
+
+
+func set_paused_playback_position(pos: float) -> void:
+	_last_play_pos = max(pos, 0.0)
+	_resume_from_pos = _last_play_pos
+	_update_track_overlay(_last_play_pos)
+
+
+func get_current_cue_start_time() -> float:
+	if _cues.is_empty():
+		return 0.0
+	var idx := _find_current_cue_index(_last_play_pos)
+	if idx < 0 or idx >= _cues.size():
+		return 0.0
+	return float(_cues[idx]["t"])
 
 
 func _notification_tracklist_restyle() -> void:
@@ -894,4 +926,9 @@ func _seek_to_cue(idx: int) -> void:
 	var cue = _cues[idx]
 	var t := float(cue["t"])
 	player.seek(t)
+	_last_play_pos = t
+	if player.playing:
+		_resume_from_pos = 0.0
+	else:
+		_resume_from_pos = t
 	_update_track_overlay(t)
