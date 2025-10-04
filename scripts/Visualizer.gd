@@ -28,7 +28,9 @@ extends Node2D
 	"FALLING_STRIPES",
 	"MANDELBOX_SWEEPER",
 	"AUDIO_VISUALIZER",
-	"ABSTRACT_MUSIC"
+	"ABSTRACT_MUSIC",
+	"RAYMARCH_AUDIO",
+	"COMPLICATING"
 ]      # e.g. ["ARCS", "STARFIELD"]
 @export var extra_shader_materials: Array[ShaderMaterial] = []  # same length as names
 
@@ -813,6 +815,15 @@ func _find_current_cue_index(now_sec: float) -> int:
 			break
 	return max(idx, 0)
 
+func _get_effective_playhead_time() -> float:
+	if player == null or player.stream == null:
+		return _last_play_pos
+	if player.playing:
+		return player.get_playback_position()
+	if _resume_from_pos > 0.0:
+		return _resume_from_pos
+	return _last_play_pos
+
 func _update_track_overlay(now_sec: float) -> void:
 	_update_overlay_visibility()
 	if not overlay_enabled or _title_label == null or _time_label == null:
@@ -893,7 +904,7 @@ func _skip_to_next_cue() -> void:
 	if _cues.is_empty() or player == null or player.stream == null:
 		return
 
-	var now := player.get_playback_position()
+	var now := _get_effective_playhead_time()
 	var idx := _find_current_cue_index(now)
 	if idx == -1:
 		return
@@ -910,7 +921,7 @@ func _skip_to_previous_cue() -> void:
 	if _cues.is_empty() or player == null or player.stream == null:
 		return
 
-	var now := player.get_playback_position()
+	var now := _get_effective_playhead_time()
 	var idx := _find_current_cue_index(now)
 	if idx == -1:
 		return
