@@ -41,6 +41,13 @@ var _custom_active_material: ShaderMaterial = null
 @export var target_bus_name: String = "Music"
 @export var analyzer_slot: int = 0
 
+@export var capture_slot: int = -1 # slot index of 'Capture' (AudioEffectCapture) on the target bus; -1 disables
+@export var enable_waveform_capture: bool = true
+@export var waveform_width: int = 1024 # will clamp to spectrum_bar_count
+var capture: AudioEffectCapture = null
+var _wave_img: Image
+var _wave_tex: ImageTexture
+
 # Normalization
 @export var db_min: float = -80.0
 @export var db_max: float =  -6.0
@@ -198,8 +205,11 @@ func _ready() -> void:
 
 	call_deferred("_init_analyzer")
 
+	call_deferred("_init_capture")
+
 	_setup_spectrum_resources()
 	_setup_waterfall_resources()
+	_setup_waveform_resources()
 	_bind_all_material_textures()
 	_update_aspect()
 
@@ -342,6 +352,7 @@ func _apply_mode_material() -> void:
 	_bind_all_material_textures()
 
 func _process(dt: float) -> void:
+	
 	var can_sample := player != null and player.stream != null and player.playing
 	var overlay_time := _last_play_pos
 
@@ -385,6 +396,7 @@ func _process(dt: float) -> void:
 	_measure_bins()
 	_advance_bins_visual()
 	_update_spec_texture()
+	_update_waveform_texture()
 	_advance_waterfall()
 
 	# Onset envelope
@@ -458,6 +470,7 @@ func _apply_static_shader_inputs(m: ShaderMaterial) -> void:
 	_set_uniform_if_present(m, "bar_count", spectrum_bar_count)
 	_set_uniform_if_present(m, "rows", waterfall_rows)
 	_set_uniform_if_present(m, "wf_rows", waterfall_rows)
+	_set_uniform_if_present(m, "waveform_tex", _wave_tex)
 
 func _norm_db(db_val: float) -> float:
 	var dmin := db_min
@@ -972,3 +985,69 @@ func _seek_to_cue(idx: int) -> void:
 	else:
 		_resume_from_pos = t
 	_update_track_overlay(t)
+
+# Replace your _init_capture() with this:
+func _init_capture() -> void:
+	if bus_idx < 0:
+		bus_idx = AudioServer.get_bus_index(target_bus_name)
+
+	# If you set capture_slot in the Inspector, it wins.
+	if capture_slot >= 0:
+		var eff := AudioServer.get_bus_effect(bus_idx, capture_slot)
+		capture = eff as AudioEffectCapture
+		if capture == null:
+			push_warning("Slot %d on bus '%s' is not Capture. Got: %s"
+				% [capture_slot, target_bus_name, str(eff)])
+			return
+	else:
+		# Auto-detect first Capture on the bus.
+		var count := AudioServer.get_bus_effect_count(bus_idx)
+		for i in count:
+			var eff := AudioServer.get_bus_effect(bus_idx, i)
+			if eff is AudioEffectCapture:
+				capture = eff
+				capture_slot = i
+				break
+		if capture == null:
+			push_warning("No Capture on bus '%s'. Add 'Capture' (last)." % target_bus_name)
+			return
+
+	# Ensure the ring buffer can actually hold audio
+	# (in seconds; adjust if you want longer)
+	if capture.buffer_length < 0.08:
+		capture.buffer_length = 0.12
+
+	print("Capture OK at slot %d on bus '%s' (buffer=%.3fs)"
+		% [capture_slot, target_bus_name, capture.buffer_length])
+
+
+func _setup_waveform_resources() -> void:
+	var w = max(1, min(waveform_width, spectrum_bar_count))
+	_wave_img = Image.create(w, 1, false, Image.FORMAT_R8)
+	_wave_tex = ImageTexture.create_from_image(_wave_img)
+
+# Replace your _update_waveform_texture() with this:
+func _update_waveform_texture() -> void:
+	if !enable_waveform_capture or capture == null:
+		return
+	if _wave_img == null:
+		_setup_waveform_resources()
+		if _wave_img == null:
+			return
+
+	var w := _wave_img.get_width()
+	var frames: PackedVector2Array = capture.get_buffer(w)
+	var count := frames.size()
+	if count == 0:
+		return
+
+	# Write PCM [-1..1] mapped to [0..1] into row 0
+	for x in range(w):
+		var s
+		if (x < count):
+			s = frames[x].x
+		else:  s =0.0
+		var v = 0.5 + 0.5 * clamp(s, -1.0, 1.0)
+		_wave_img.set_pixel(x, 0, Color(v, 0, 0, 1))
+
+	_wave_tex.update(_wave_img)  # push to GPU

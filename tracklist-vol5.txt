@@ -11,5 +11,5 @@
 29:19 Orbiting Minds | shader=ELECTRON_SURGE
 33:40 Return to Light | shader=VORONOI_PULSE_GRID
 36:14 Electric Heartbeat | shader=SONIC_FUSION
-39:15 In My Dreams | shader=KALEIDOSCOPE_BLOOM
+39:15 In My Dreams | shader=SONIC_FUSION
 44:21 Frequency Beyond Control | shader=ARC_STORM | set={"warp_amp":1.0, "curvature":0.0, "warp_freq":6, "width_base":200.0}

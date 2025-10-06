@@ -1,0 +1,13 @@
+0:00 Shadows in Motion | shader=ATANS_BEGONE | set={"curvature":0.0, "warp_amp":1.0, "width_base":200.0}
+40:10 Pulse Vector | shader=LINE   | set={"gain":0.9,"gamma":0.95,"line_thick":1.75,"peak_mix":0.15}
+0:20 Infinite Journey | shader=RIBBON_TRAILS         | set={"arc_count":5,"highlight_all":true,"band_bass":[0.00,0.22],"band_mid":[0.22,0.62],"band_treble":[0.62,1.0],"gain_bass":0.80,"gain_mid":1.25,"gain_treble":2.00,"highlight_thresh":0.40,"speed_audio_mul":1.35,"speed_level_drive":0.20}
+0:30 One More Night | shader=SONIC_FUSION    | set={"glow":1.35}
+0:40 Take Me Away | shader=BASIC_AUDIO| set={"use_waterfall":true,"wf_rows":256,"ring_strength":0.20,"color_gain":1.1}
+0:50 Shadows Fade Away | shader=ELECTRON_SURGE  | set={"use_audio":true,"torsion":0.85,"ring_gain":1.2,"ring_width":0.9,"glow":1.25,"hue_shift":0.1}
+1:00 Digital Dawn | shader=ELECTRON_SURGE  | set={"use_audio":true,"torsion":0.85,"ring_gain":1.2,"ring_width":0.9,"glow":1.25,"hue_shift":0.1}
+1:10 Overclock | shader=HEXAGONE        | set={"use_audio":true,"speed":0.85}
+1:20 Orbiting Minds | shader=FRACTAL_COLORS | set={"use_audio":true,"audio_hue_gain":0.12,"audio_smooth":0.25,"zoom":0.985,"iter_count":40,"exposure":1.0,"gamma_fix":0.95}
+1:30 Return to Light | shader=BUBBLES   | set={"use_audio":true,"bubble_count":120,"swirl":0.35,"wobble":0.25,"hue_cycle":0.06}
+1:40 Electric Heartbeat | shader=BARS        | set={"gain":1.15,"gamma":0.92,"peak_mix":0.35}
+1:50 In My Dreams | shader=POWER_PARTICLE  | set={"speed":0.80,"scale":1.15,"audio_enabled":true}
+2:00 Frequency Beyond Control | shader=RING            | set={"ring_radius":0.62,"thickness":0.12,"bass_thresh":0.42,"treble_thresh":0.36,"hue_period_s":14.0,"saturation":0.9,"value":1.0}

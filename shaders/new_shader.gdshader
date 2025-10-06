@@ -55,7 +55,7 @@ void fragment() {
 	// 1) Centered, aspect-correct coords (keep circles round)
     vec2 p = (SCREEN_UV - 0.5) * 2.0;
     p.x *= aspect;
-	
+
 	// 2) Color: rainbow around the circle + slow drift over time
 	float ang = atan(p.y, p.x);             // Angle around the center in radians (-π..π).
 	float around = fract(ang / TAU);        // Map angle to 0..1 around the circle. This will drive the rainbow.
@@ -70,7 +70,7 @@ void fragment() {
 
     // Start color with base ring
     vec3 col = base_rgb * lum;
-	
+
 	// 4) Continuous ripple emission (outward & inward)
     int   N   = clamp(pulses, 0, 10);                    // 32  cap for safety
     float ph  = fract(TIME / emit_dt) * emit_dt;         // 33  newest pulse age ∈ [0, emit_dt)
@@ -85,15 +85,15 @@ void fragment() {
         if (r_i > 2.0) continue;                         // 38  offscreen guard
         float width = thickness * mix(1.0, widen, float(i) / max(1.0, float(N))); // 39
         float w     = pow(falloff, float(i));            // 40  fade older echoes
-		
-		
+
+
         // Freeze the pulse color at EMISSION time:
         // emission_time = now - age
         float t_emit    = TIME - age;
         float drift_emit = (hue_period_s > 0.0) ? (t_emit / hue_period_s) : 0.0;
         float hue_i     = fract(around + drift_emit);
         vec3  rgb_i     = hsv2rgb(vec3(hue_i, saturation, value));
-		
+
         col += rgb_i * (ring_band(p, r_i, width) * w);
     }
 
