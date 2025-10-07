@@ -1138,6 +1138,24 @@ func _parse_tracklist() -> void:
 	_resume_from_pos = 0.0
 	_update_track_overlay(_last_play_pos)
 
+func apply_tracklist_entry(entry: Dictionary) -> void:
+	if entry == null or entry.is_empty():
+		return
+	if !_cues.is_empty():
+		_update_track_overlay(_last_play_pos)
+		return
+	var shader_name := String(entry.get("shader", ""))
+	if shader_name != "":
+		set_shader_by_name(shader_name)
+	var params = entry.get("params", {})
+	if params is Dictionary and (params as Dictionary).size() > 0:
+		_apply_shader_params(params)
+	var title := String(entry.get("title", ""))
+	if title != "" and _title_label:
+		_title_label.text = title
+	if _time_label:
+		_time_label.text = _format_clock(_last_play_pos)
+
 func _parse_timestamp_to_seconds(ts: String) -> float:
 	# supports M:SS, MM:SS, H:MM:SS
 	var parts := ts.split(":")
