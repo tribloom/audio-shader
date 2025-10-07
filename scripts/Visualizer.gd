@@ -223,7 +223,8 @@ func _ready() -> void:
 
 	call_deferred("_init_analyzer")
 
-	call_deferred("_init_capture")
+	if !_offline_mode:
+		call_deferred("_init_capture")
 
 	_bind_all_material_textures()
 	_update_aspect()
