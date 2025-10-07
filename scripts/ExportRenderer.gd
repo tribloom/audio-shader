@@ -19,27 +19,38 @@ var jpg_quality: float = 0.9
 var duration_s: float = 0.0
 var waveform_base: String = ""
 
+# Tracklist overrides for headless mode
+var tracklist_path: String = ""
+var track_index: int = 1
+var track_index_specified: bool = false
+var tracklist_inline: PackedStringArray = PackedStringArray()
+var selected_track_entry: Dictionary = {}
+
 func _initialize() -> void:
 	_parse_args()
 
 	# Create an offscreen SubViewport to render into
-	svp = SubViewport.new()
-	svp.disable_3d = true
-	svp.transparent_bg = false
-	svp.update_mode = SubViewport.UPDATE_ALWAYS
-	svp.size = Vector2i(width, height)
-	# Add under the SceneTree's root
-	root.add_child(svp)
+        svp = SubViewport.new()
+        svp.disable_3d = true
+        svp.transparent_bg = false
+        svp.update_mode = SubViewport.UpdateMode.UPDATE_ALWAYS
+        svp.size = Vector2i(width, height)
+        # Add under the SceneTree's root
+        root.add_child(svp)
 
-	# Load your scene into the SubViewport
-	var scene_path: String = args.get("scene", "scenes/AudioViz.tscn")
-	root_node = load(scene_path).instantiate()
-	svp.add_child(root_node)
+        # Load your scene into the SubViewport
+        var scene_path: String = args.get("scene", "scenes/AudioViz.tscn")
+        root_node = load(scene_path).instantiate()
+        _apply_tracklist_properties(root_node)
+        svp.add_child(root_node)
 
-	# Enable offline mode + aspect + features
-	if root_node.has_method("set_offline_mode"):
-		root_node.call("set_offline_mode", true)
-	if root_node.has_method("set_aspect"):
+        await root_node.ready
+        _apply_selected_track_entry()
+
+        # Enable offline mode + aspect + features
+        if root_node.has_method("set_offline_mode"):
+                root_node.call("set_offline_mode", true)
+        if root_node.has_method("set_aspect"):
 		root_node.call("set_aspect", float(width) / float(height))
 	var features_path: String = args.get("features", "")
 	if features_path != "" and root_node.has_method("load_features_csv"):
@@ -73,32 +84,51 @@ func _initialize() -> void:
 
 func _parse_args() -> void:
 	var raw := OS.get_cmdline_args()
-	for a in raw:
-		if a.begins_with("--scene="):
-			args.scene = a.split("=")[1]
-		elif a.begins_with("--features="):
-			args.features = a.split("=")[1]
-		elif a.begins_with("--fps="):
-			fps = int(a.split("=")[1])
-		elif a.begins_with("--w="):
-			width = int(a.split("=")[1])
-		elif a.begins_with("--h="):
-			height = int(a.split("=")[1])
-		elif a.begins_with("--out="):
-			out_dir = a.split("=")[1]
-		elif a.begins_with("--jpg="):
-			save_jpg = int(a.split("=")[1]) != 0
-		elif a.begins_with("--quality="):
-			jpg_quality = float(a.split("=")[1])
-		elif a.begins_with("--waveform="):
-			waveform_base = a.split("=")[1]
-	if waveform_base != "":
-		args.waveform = waveform_base
+        var pending_tracklist := ""
+        for a in raw:
+                if a.begins_with("--scene="):
+                        var scene_val := _sanitize_cli_path(_extract_value(a, "--scene="))
+                        if scene_val != "":
+                                args.scene = scene_val
+                elif a.begins_with("--features="):
+                        var features_val := _sanitize_cli_path(_extract_value(a, "--features="))
+                        if features_val != "":
+                                args.features = features_val
+                elif a.begins_with("--fps="):
+                        fps = int(_extract_value(a, "--fps="))
+                elif a.begins_with("--w="):
+                        width = int(_extract_value(a, "--w="))
+                elif a.begins_with("--h="):
+                        height = int(_extract_value(a, "--h="))
+                elif a.begins_with("--out="):
+                        var out_val := _sanitize_cli_path(_extract_value(a, "--out="))
+                        if out_val != "":
+                                out_dir = out_val
+                elif a.begins_with("--jpg="):
+                        save_jpg = int(_extract_value(a, "--jpg=")) != 0
+                elif a.begins_with("--quality="):
+                        jpg_quality = float(_extract_value(a, "--quality="))
+                elif a.begins_with("--waveform="):
+                        var wave_val := _sanitize_cli_path(_extract_value(a, "--waveform="))
+                        if wave_val != "":
+                                waveform_base = wave_val
+                elif a.begins_with("--tracklist="):
+                        var tracklist_val := _sanitize_cli_path(_extract_value(a, "--tracklist="))
+                        if tracklist_val != "":
+                                pending_tracklist = tracklist_val
+                elif a.begins_with("--track="):
+                        track_index = max(1, int(_extract_value(a, "--track=")))
+                        track_index_specified = true
+        if waveform_base != "":
+                args.waveform = waveform_base
+        if pending_tracklist != "":
+                tracklist_path = pending_tracklist
+                _prepare_tracklist_override()
 
 func _infer_duration(features_path: String) -> float:
-	if features_path == "":
-		return 60.0
-	var dur_txt := features_path.get_basename() + ".duration.txt"
+        if features_path == "":
+                return 60.0
+        var dur_txt := features_path.get_basename() + ".duration.txt"
 	if FileAccess.file_exists(dur_txt):
 		var f := FileAccess.open(dur_txt, FileAccess.READ)
 		if f:
@@ -115,4 +145,140 @@ func _infer_duration(features_path: String) -> float:
 			count += 1
 		if count > 0:
 			return float(count) / float(fps)
-	return 60.0
+        return 60.0
+
+func _extract_value(src: String, prefix: String) -> String:
+        return src.substr(prefix.length())
+
+func _sanitize_cli_path(raw: String) -> String:
+        var trimmed := raw.strip_edges()
+        if trimmed.length() >= 2:
+                if (trimmed.begins_with("\"") and trimmed.ends_with("\"")) or (trimmed.begins_with("'") and trimmed.ends_with("'")):
+                        trimmed = trimmed.substr(1, trimmed.length() - 2)
+        trimmed = trimmed.strip_edges()
+        return trimmed.replace("\\", "/")
+
+func _prepare_tracklist_override() -> void:
+        selected_track_entry = {}
+        tracklist_inline = PackedStringArray()
+        if tracklist_path == "":
+                return
+
+        var lines := _read_tracklist_lines(tracklist_path)
+        if lines.is_empty():
+                push_warning("Tracklist not found: %s" % tracklist_path)
+                return
+
+        var entries := _parse_tracklist_entries(lines)
+        if entries.is_empty():
+                push_warning("Tracklist has no valid entries: %s" % tracklist_path)
+                return
+
+        var idx := clamp(track_index - 1, 0, entries.size() - 1)
+        if track_index_specified and (idx != track_index - 1):
+                push_warning("Track index %d is out of range. Using entry %d." % [track_index, idx + 1])
+        selected_track_entry = entries[idx]
+
+        if track_index_specified:
+                var body := String(selected_track_entry.get("body", ""))
+                var line := "0:00 " + body
+                var inline := PackedStringArray()
+                inline.append(line)
+                tracklist_inline = inline
+
+func _read_tracklist_lines(path: String) -> PackedStringArray:
+        var lines := PackedStringArray()
+        var file := FileAccess.open(path, FileAccess.READ)
+        if file == null:
+                var global_path := ProjectSettings.globalize_path(path)
+                if global_path != path:
+                        file = FileAccess.open(global_path, FileAccess.READ)
+        if file == null and (path.begins_with("res://") or path.begins_with("user://")):
+                        var abs := ProjectSettings.globalize_path(path)
+                        file = FileAccess.open(abs, FileAccess.READ)
+        if file == null and !path.begins_with("res://") and !path.begins_with("user://"):
+                        var res_path := "res://".path_join(path)
+                        if FileAccess.file_exists(res_path):
+                                file = FileAccess.open(res_path, FileAccess.READ)
+        if file == null:
+                return lines
+        while not file.eof_reached():
+                lines.append(file.get_line())
+        file.close()
+        return lines
+
+func _parse_tracklist_entries(lines: PackedStringArray) -> Array:
+        var out: Array = []
+        for raw_line in lines:
+                var line := String(raw_line).strip_edges()
+                if line == "" or line.begins_with("#"):
+                        continue
+                var space_idx := line.find(" ")
+                if space_idx < 0:
+                        continue
+                var ts := line.substr(0, space_idx).strip_edges()
+                var body := line.substr(space_idx + 1).strip_edges()
+                if body == "":
+                        continue
+                var title := body
+                var shader_name := ""
+                var params := {}
+                if body.find("|") >= 0:
+                        var parts := body.split("|")
+                        title = parts[0].strip_edges()
+                        for i in range(1, parts.size()):
+                                var seg := String(parts[i]).strip_edges()
+                                if seg == "":
+                                        continue
+                                if seg.begins_with("shader="):
+                                        shader_name = seg.substr("shader=".length()).strip_edges()
+                                elif seg.begins_with("set="):
+                                        var json_txt := seg.substr("set=".length()).strip_edges()
+                                        var parsed = JSON.parse_string(json_txt)
+                                        if typeof(parsed) == TYPE_DICTIONARY:
+                                                params = parsed
+                                        else:
+                                                push_warning("Invalid JSON in tracklist set= directive: %s" % json_txt)
+                out.append({
+                        "timestamp": ts,
+                        "body": body,
+                        "title": title,
+                        "shader": shader_name,
+                        "params": params,
+                })
+        return out
+
+func _apply_tracklist_properties(node: Node) -> void:
+        if node == null:
+                return
+        var has_path := _has_property(node, "tracklist_path")
+        var has_lines := _has_property(node, "tracklist_lines")
+        if track_index_specified and tracklist_inline.size() > 0:
+                if has_path:
+                        node.set("tracklist_path", "")
+                if has_lines:
+                        node.set("tracklist_lines", tracklist_inline)
+        elif tracklist_path != "":
+                if has_path:
+                        node.set("tracklist_path", tracklist_path)
+
+func _apply_selected_track_entry() -> void:
+        if selected_track_entry.is_empty() or root_node == null:
+                return
+        if root_node.has_method("apply_tracklist_entry"):
+                root_node.call("apply_tracklist_entry", selected_track_entry)
+                return
+        var shader_name := String(selected_track_entry.get("shader", ""))
+        if shader_name != "" and root_node.has_method("set_shader_by_name"):
+                root_node.call("set_shader_by_name", shader_name)
+        var params := selected_track_entry.get("params", {})
+        if params is Dictionary and (params as Dictionary).size() > 0 and root_node.has_method("_apply_shader_params"):
+                root_node.call("_apply_shader_params", params)
+
+func _has_property(obj: Object, prop: String) -> bool:
+        if obj == null:
+                return false
+        for item in obj.get_property_list():
+                if String(item.name) == prop:
+                        return true
+        return false
