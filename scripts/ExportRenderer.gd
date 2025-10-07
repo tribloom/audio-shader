@@ -64,21 +64,26 @@ func _initialize() -> void:
 
 	# Deterministic frame loop
 	var frames_total := int(ceil(duration_s * float(fps)))
-	for i in range(frames_total):
-		var t := float(i) / float(fps)
-		if root_node.has_method("set_playhead"):
-			root_node.call("set_playhead", t)
+        for i in range(frames_total):
+                var t := float(i) / float(fps)
+                if root_node.has_method("set_playhead"):
+                        root_node.call("set_playhead", t)
 
-		# Advance one engine frame, then read pixels
-		await self.process_frame
+                # Advance one engine frame, then read pixels
+                await self.process_frame
 
-		var img: Image = svp.get_texture().get_image()
-		var ext := ("jpg" if save_jpg else "png")
-		var path := out_dir + "/" + ("%06d" % i) + "." + ext
-		if save_jpg:
-			img.save_jpg(path, int(round(jpg_quality * 100.0)))
-		else:
-			img.save_png(path)
+                var img: Image = await _capture_viewport_image()
+                if img == null:
+                        push_error("Failed to capture SubViewport image. If you are running headless, make sure a rendering driver is available (e.g. remove --headless or force --rendering-driver opengl3).")
+                        quit(1)
+                        return
+
+                var ext := ("jpg" if save_jpg else "png")
+                var path := out_dir + "/" + ("%06d" % i) + "." + ext
+                if save_jpg:
+                        img.save_jpg(path, int(round(jpg_quality * 100.0)))
+                else:
+                        img.save_png(path)
 
 	quit()
 
@@ -276,9 +281,25 @@ func _apply_selected_track_entry() -> void:
 				root_node.call("_apply_shader_params", params)
 
 func _has_property(obj: Object, prop: String) -> bool:
-		if obj == null:
-				return false
-		for item in obj.get_property_list():
-				if String(item.name) == prop:
-						return true
-		return false
+                if obj == null:
+                                return false
+                for item in obj.get_property_list():
+                                if String(item.name) == prop:
+                                                return true
+                return false
+
+func _capture_viewport_image(max_attempts: int = 3) -> Image:
+                for attempt in range(max_attempts):
+                                await RenderingServer.frame_post_draw
+                                if svp == null:
+                                                return null
+                                var tex := svp.get_texture()
+                                if tex == null:
+                                                continue
+                                var rid := tex.get_rid()
+                                if not rid.is_valid():
+                                                continue
+                                var img := tex.get_image()
+                                if img != null:
+                                                return img
+                return null
