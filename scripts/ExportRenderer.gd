@@ -17,6 +17,7 @@ var out_dir: String = "export/frames"
 var save_jpg: bool = false
 var jpg_quality: float = 0.9
 var duration_s: float = 0.0
+var waveform_base: String = ""
 
 func _initialize() -> void:
 	_parse_args()
@@ -36,13 +37,16 @@ func _initialize() -> void:
 	svp.add_child(root_node)
 
 	# Enable offline mode + aspect + features
-	if root_node.has_method("set_offline_mode"):
-		root_node.call("set_offline_mode", true)
-	if root_node.has_method("set_aspect"):
-		root_node.call("set_aspect", float(width) / float(height))
-	var features_path: String = args.get("features", "")
-	if features_path != "" and root_node.has_method("load_features_csv"):
-		root_node.call("load_features_csv", features_path)
+        if root_node.has_method("set_offline_mode"):
+                root_node.call("set_offline_mode", true)
+        if root_node.has_method("set_aspect"):
+                root_node.call("set_aspect", float(width) / float(height))
+        var features_path: String = args.get("features", "")
+        if features_path != "" and root_node.has_method("load_features_csv"):
+                root_node.call("load_features_csv", features_path)
+        var waveform_path: String = args.get("waveform", "")
+        if waveform_path != "" and root_node.has_method("load_waveform_binary"):
+                root_node.call("load_waveform_binary", waveform_path)
 
 	duration_s = _infer_duration(features_path)
 	DirAccess.make_dir_recursive_absolute(out_dir)
@@ -80,12 +84,16 @@ func _parse_args() -> void:
 			width = int(a.split("=")[1])
 		elif a.begins_with("--h="):
 			height = int(a.split("=")[1])
-		elif a.begins_with("--out="):
-			out_dir = a.split("=")[1]
-		elif a.begins_with("--jpg="):
-			save_jpg = int(a.split("=")[1]) != 0
-		elif a.begins_with("--quality="):
-			jpg_quality = float(a.split("=")[1])
+                elif a.begins_with("--out="):
+                        out_dir = a.split("=")[1]
+                elif a.begins_with("--jpg="):
+                        save_jpg = int(a.split("=")[1]) != 0
+                elif a.begins_with("--quality="):
+                        jpg_quality = float(a.split("=")[1])
+                elif a.begins_with("--waveform="):
+                        waveform_base = a.split("=")[1]
+        if waveform_base != "":
+                args.waveform = waveform_base
 
 func _infer_duration(features_path: String) -> float:
 	if features_path == "":

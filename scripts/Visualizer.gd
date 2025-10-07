@@ -48,6 +48,17 @@ var capture: AudioEffectCapture = null
 var _wave_img: Image
 var _wave_tex: ImageTexture
 
+# Offline rendering support
+var _offline_mode: bool = false
+var _offline_playhead: float = 0.0
+var _offline_features: Array = []              # Array of {"frame": int, "t": float, "level": float, "kick": float, "bands": PackedFloat32Array}
+var _offline_fps: float = 60.0
+var _offline_dt: float = 1.0 / 60.0
+var _offline_last_index: int = 0
+var _offline_wave_samples: PackedFloat32Array = PackedFloat32Array()
+var _offline_wave_rate: float = 0.0
+var _offline_wave_duration: float = 0.0
+
 # Normalization
 @export var db_min: float = -80.0
 @export var db_max: float =  -6.0
@@ -100,6 +111,7 @@ enum Mode {
 @export_group("")
 
 var _is_portrait: bool = false
+var _forced_aspect: float = 0.0
 
 var analyzer: AudioEffectSpectrumAnalyzerInstance
 var bus_idx: int = -1
@@ -264,23 +276,200 @@ func set_shader_by_name(name: String) -> bool:
 	return false
 
 func _apply_shader_params(params: Dictionary) -> void:
-	var mat := color_rect.material as ShaderMaterial
-	if mat == null: return
-	for k in params.keys():
-		var v = params[k]
-		# Coerce arrays to Godot vectors/colors
-		if v is Array:
-			var a := v as Array
-			if a.size() == 2: v = Vector2(a[0], a[1])
-			elif a.size() == 3: v = Color(a[0], a[1], a[2], 1.0) # works for vec3/color
-			elif a.size() == 4: v = Color(a[0], a[1], a[2], a[3])
-		# Try to set; ignore unknown
-		mat.set_shader_parameter(k, v)
+        var mat := color_rect.material as ShaderMaterial
+        if mat == null: return
+        for k in params.keys():
+                var v = params[k]
+                # Coerce arrays to Godot vectors/colors
+                if v is Array:
+                        var a := v as Array
+                        if a.size() == 2: v = Vector2(a[0], a[1])
+                        elif a.size() == 3: v = Color(a[0], a[1], a[2], 1.0) # works for vec3/color
+                        elif a.size() == 4: v = Color(a[0], a[1], a[2], a[3])
+                # Try to set; ignore unknown
+                mat.set_shader_parameter(k, v)
+
+func set_offline_mode(enable: bool) -> void:
+        _offline_mode = enable
+        if enable:
+                started = true
+                if player:
+                        player.stop()
+                analyzer = null
+                capture = null
+                _offline_last_index = 0
+        else:
+                _offline_playhead = 0.0
+
+func set_aspect(aspect: float) -> void:
+        if aspect <= 0.0:
+                return
+        _forced_aspect = aspect
+        _update_aspect()
+
+func set_playhead(t: float) -> void:
+        _offline_playhead = max(t, 0.0)
+        _last_play_pos = _offline_playhead
+        if _offline_features.size() > 0:
+                var idx_time := 0.0
+                if _offline_last_index >= 0 and _offline_last_index < _offline_features.size():
+                        idx_time = float(_offline_features[_offline_last_index].get("t", 0.0))
+                if _offline_playhead <= idx_time:
+                        _offline_last_index = 0
+
+func load_features_csv(path: String) -> void:
+        _offline_features.clear()
+        _offline_last_index = 0
+        if path == "":
+                return
+
+        var f := FileAccess.open(path, FileAccess.READ)
+        if f == null:
+                push_error("Failed to open features CSV: %s" % path)
+                return
+
+        var header_line := f.get_line()
+        var headers := header_line.split(",")
+        var col_index := {}
+        for i in range(headers.size()):
+                col_index[headers[i].strip_edges().to_lower()] = i
+
+        var required := ["frame", "t", "level", "kick"]
+        for key in required:
+                if !col_index.has(key):
+                        push_error("Missing column '%s' in features CSV" % key)
+                        f.close()
+                        return
+
+        var band_columns: Array = []
+        for h in headers:
+                var name := h.strip_edges()
+                if name.length() >= 2 and name.begins_with("s"):
+                        if name.substr(1).is_valid_int():
+                                band_columns.append(name.to_lower())
+        band_columns.sort_custom(func(a, b):
+                return int(String(a).substr(1)) < int(String(b).substr(1)))
+
+        var prev_time := -1.0
+        var dt_accum := 0.0
+        var dt_count := 0
+        var last_time := 0.0
+        var last_frame := 0
+        while !f.eof_reached():
+                var line := f.get_line()
+                if line.strip_edges() == "":
+                        continue
+                var cells := line.split(",")
+                if cells.size() < headers.size():
+                        continue
+                var frame_idx := cells[col_index["frame"]].strip_edges().to_int()
+                var t_val := cells[col_index["t"]].strip_edges().to_float()
+                var level_val := cells[col_index["level"]].strip_edges().to_float()
+                var kick_val := cells[col_index["kick"]].strip_edges().to_float()
+
+                var bands := PackedFloat32Array()
+                bands.resize(band_columns.size())
+                for bi in range(band_columns.size()):
+                        var cname := band_columns[bi]
+                        if col_index.has(cname):
+                                var raw := cells[col_index[cname]].strip_edges()
+                                bands[bi] = raw.to_float()
+                        else:
+                                bands[bi] = 0.0
+
+                _offline_features.append({
+                        "frame": frame_idx,
+                        "t": t_val,
+                        "level": clamp(level_val, 0.0, 1.0),
+                        "kick": clamp(kick_val, 0.0, 1.0),
+                        "bands": bands,
+                })
+
+                if prev_time >= 0.0:
+                        var step := max(0.0, t_val - prev_time)
+                        if step > 0.0:
+                                dt_accum += step
+                                dt_count += 1
+                prev_time = t_val
+                last_time = t_val
+                last_frame = frame_idx
+
+        f.close()
+
+        if dt_count > 0 and dt_accum > 0.0:
+                _offline_dt = dt_accum / float(dt_count)
+        elif _offline_features.size() > 1:
+                var first = _offline_features[0]
+                var second = _offline_features[1]
+                _offline_dt = max(1.0 / 60.0, float(second["t"]) - float(first["t"]))
+        else:
+                _offline_dt = 1.0 / 60.0
+
+        if _offline_dt <= 0.0:
+                _offline_dt = 1.0 / 60.0
+        _offline_fps = 1.0 / _offline_dt
+        _offline_playhead = 0.0
+        _last_play_pos = 0.0
+
+        if _offline_features.size() > 0:
+                _offline_wave_duration = last_time
+        else:
+                _offline_wave_duration = 0.0
+
+func load_waveform_binary(base_path: String) -> void:
+        if base_path == "":
+                return
+        var bin_path := base_path + ".f32"
+        var json_path := base_path + ".json"
+        if !FileAccess.file_exists(bin_path) or !FileAccess.file_exists(json_path):
+                        push_warning("Waveform files not found for base '%s'" % base_path)
+                        return
+
+        var meta_file := FileAccess.open(json_path, FileAccess.READ)
+        if meta_file == null:
+                push_warning("Failed to open waveform meta: %s" % json_path)
+                return
+        var meta_text := meta_file.get_as_text()
+        meta_file.close()
+        var meta := JSON.parse_string(meta_text)
+        if typeof(meta) != TYPE_DICTIONARY:
+                push_warning("Invalid waveform metadata JSON: %s" % json_path)
+                return
+        _offline_wave_rate = float(meta.get("sample_rate", 0.0))
+        var expected_len := int(meta.get("length", 0))
+
+        var bin_file := FileAccess.open(bin_path, FileAccess.READ)
+        if bin_file == null:
+                push_warning("Failed to open waveform binary: %s" % bin_path)
+                return
+        bin_file.big_endian = false
+        var samples := PackedFloat32Array()
+        if expected_len > 0:
+                samples.resize(expected_len)
+                for i in range(expected_len):
+                        if bin_file.eof_reached():
+                                samples[i] = 0.0
+                        else:
+                                samples[i] = bin_file.get_float()
+        else:
+                while !bin_file.eof_reached():
+                        samples.append(bin_file.get_float())
+        bin_file.close()
+
+        _offline_wave_samples = samples
+        if _offline_wave_rate > 0.0 and samples.size() > 0:
+                _offline_wave_duration = float(samples.size()) / _offline_wave_rate
+        elif _offline_features.size() > 0:
+                _offline_wave_duration = float(_offline_features.back().get("t", 0.0))
+        else:
+                _offline_wave_duration = 0.0
 
 func _init_analyzer() -> void:
-	analyzer = AudioServer.get_bus_effect_instance(bus_idx, analyzer_slot) as AudioEffectSpectrumAnalyzerInstance
-	if analyzer == null:
-		push_error("No SpectrumAnalyzer on bus '%s' slot %d." % [target_bus_name, analyzer_slot])
+        if _offline_mode:
+                return
+        analyzer = AudioServer.get_bus_effect_instance(bus_idx, analyzer_slot) as AudioEffectSpectrumAnalyzerInstance
+        if analyzer == null:
+                push_error("No SpectrumAnalyzer on bus '%s' slot %d." % [target_bus_name, analyzer_slot])
 
 func _input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed:
@@ -352,9 +541,13 @@ func _apply_mode_material() -> void:
 	_bind_all_material_textures()
 
 func _process(dt: float) -> void:
-	
-	var can_sample := player != null and player.stream != null and player.playing
-	var overlay_time := _last_play_pos
+
+        if _offline_mode:
+                _process_offline()
+                return
+
+        var can_sample := player != null and player.stream != null and player.playing
+        var overlay_time := _last_play_pos
 
 	if !can_sample:
 		_update_track_overlay(overlay_time)
@@ -443,7 +636,141 @@ func _process(dt: float) -> void:
 
 	_update_aspect()
 
-	_update_track_overlay(overlay_time)
+        _update_track_overlay(overlay_time)
+
+func _process_offline() -> void:
+        var overlay_time := _offline_playhead
+
+        if color_rect == null:
+                _update_track_overlay(overlay_time)
+                return
+
+        if _offline_features.is_empty():
+                _update_track_overlay(overlay_time)
+                return
+
+        var sample := _sample_offline_features(_offline_playhead)
+        if sample.is_empty():
+                _update_track_overlay(overlay_time)
+                return
+
+        level_sm = float(sample.get("level", 0.0))
+        kick_sm  = float(sample.get("kick", 0.0))
+
+        var bands := sample.get("bands", PackedFloat32Array())
+        if bands is PackedFloat32Array:
+                var arr := bands as PackedFloat32Array
+                if arr.size() > 0:
+                        bass_sm = clamp(arr[0], 0.0, 1.0)
+                        treb_sm = clamp(arr[arr.size() - 1], 0.0, 1.0)
+                        tone_sm = _estimate_tone_from_bands(arr)
+                        _apply_offline_spectrum(arr)
+                else:
+                        _apply_offline_spectrum(PackedFloat32Array())
+        else:
+                _apply_offline_spectrum(PackedFloat32Array())
+
+        var effective_dt := _offline_dt
+        if effective_dt <= 0.0:
+                effective_dt = 1.0 / max(1.0, _offline_fps)
+        if effective_dt <= 0.0:
+                effective_dt = 1.0 / 60.0
+
+        _update_waveform_texture()
+        _update_spec_texture()
+        _advance_waterfall()
+        _update_kick_envelope(effective_dt)
+
+        var mat := color_rect.material as ShaderMaterial
+        if mat:
+                match mode:
+                        Mode.CHROMA:
+                                mat.set_shader_parameter("level", clamp(level_sm * level_boost, 0.0, 1.0))
+                                mat.set_shader_parameter("kick",  clamp(kick_sm  * kick_boost,  0.0, 1.0))
+                        Mode.CIRCLE:
+                                mat.set_shader_parameter("bass",   clamp(bass_sm,  0.0, 1.0))
+                                mat.set_shader_parameter("treble", clamp(treb_sm,  0.0, 1.0))
+                                mat.set_shader_parameter("tone",   clamp(tone_sm,  0.0, 1.0))
+                        Mode.WATERFALL:
+                                if material_waterfall:
+                                        var head_norm := float(_wf_head) / float(max(1, waterfall_rows))
+                                        material_waterfall.set_shader_parameter("head_norm", head_norm)
+                        Mode.AURORA, Mode.UNIVERSE, Mode.UNIVERSE_ALT:
+                                mat.set_shader_parameter("kick_in",  clamp(kick_sm,   0.0, 1.0))
+                                mat.set_shader_parameter("kick_env", clamp(_kick_env, 0.0, 1.0))
+                                mat.set_shader_parameter("ring_age", clamp(_ring_age, 0.0, 1.0))
+                        Mode.BASIC_AUDIO:
+                                if material_basic_audio_shader:
+                                        var head_norm2 := float(_wf_head) / float(max(1, waterfall_rows))
+                                        material_basic_audio_shader.set_shader_parameter("head_norm", head_norm2)
+
+                _set_uniform_if_present(mat, "aspect", _get_current_aspect())
+                _set_uniform_if_present(mat, "level_in", clamp(level_sm * level_boost, 0.0, 1.0))
+                _set_uniform_if_present(mat, "bass_in", clamp(bass_sm, 0.0, 1.0))
+                _set_uniform_if_present(mat, "treble_in", clamp(treb_sm, 0.0, 1.0))
+                _set_uniform_if_present(mat, "tone_in", clamp(tone_sm, 0.0, 1.0))
+                _set_uniform_if_present(mat, "kick_env", clamp(_kick_env, 0.0, 1.0))
+
+        _update_aspect()
+        _update_track_overlay(overlay_time)
+
+func _sample_offline_features(t: float) -> Dictionary:
+        if _offline_features.is_empty():
+                return {}
+
+        var idx := clamp(_offline_last_index, 0, _offline_features.size() - 1)
+        var current := _offline_features[idx]
+        var current_time := float(current.get("t", 0.0))
+
+        if t < current_time and idx > 0:
+                while idx > 0 and t < float(_offline_features[idx].get("t", 0.0)):
+                        idx -= 1
+        else:
+                while idx + 1 < _offline_features.size() and t >= float(_offline_features[idx + 1].get("t", 0.0)):
+                        idx += 1
+
+        _offline_last_index = idx
+        return _offline_features[idx]
+
+func _apply_offline_spectrum(bands: PackedFloat32Array) -> void:
+        if _spec_img == null:
+                _setup_spectrum_resources()
+        if bands.is_empty():
+                for i in range(spectrum_bar_count):
+                        _bin_raw[i] = 0.0
+                        _bin_vis[i] = 0.0
+                        _peak_hold[i] = 0.0
+                return
+
+        var count := bands.size()
+        for i in range(spectrum_bar_count):
+                var t := 0.0
+                if spectrum_bar_count > 1:
+                        t = float(i) / float(spectrum_bar_count - 1)
+                var fpos := t * float(max(1, count - 1))
+                var i0 := int(floor(fpos))
+                var i1 := min(count - 1, i0 + 1)
+                var frac := fpos - float(i0)
+                var v := lerp(bands[i0], bands[i1], frac)
+                v = clamp(v, 0.0, 1.0)
+                _bin_raw[i] = v
+                _bin_vis[i] = v
+                _peak_hold[i] = v
+
+func _estimate_tone_from_bands(bands: PackedFloat32Array) -> float:
+        if bands.is_empty():
+                return 0.0
+        var num := 0.0
+        var den := 0.0
+        var count := bands.size()
+        for i in range(count):
+                var mag := max(0.0, bands[i])
+                var weight := float(i) / float(max(1, count - 1))
+                num += weight * mag
+                den += mag
+        if den <= 1e-6:
+                return 0.0
+        return clamp(num / den, 0.0, 1.0)
 
 func _shader_has_uniform(m: ShaderMaterial, name: String) -> bool:
 	if m == null or m.shader == null:
@@ -506,18 +833,15 @@ func _compute_tone_norm() -> float:
 	return clamp(t, 0.0, 1.0)
 
 func _notification(what: int) -> void:
-	if what == NOTIFICATION_WM_SIZE_CHANGED:
-		_update_aspect()
+        if what == NOTIFICATION_WM_SIZE_CHANGED:
+                _update_aspect()
 
 func _update_aspect() -> void:
-	var s := get_viewport_rect().size
-	if s.y <= 0.0: return
-	var aspect := s.x / s.y
-
-	var active := color_rect.material as ShaderMaterial
-	if active:
-		_apply_static_shader_inputs(active)
-		_set_uniform_if_present(active, "aspect", aspect)
+        var aspect := _get_current_aspect()
+        var active := color_rect.material as ShaderMaterial
+        if active:
+                _apply_static_shader_inputs(active)
+                _set_uniform_if_present(active, "aspect", aspect)
 
 	for m in [
 		material_bars, material_line, material_waterfall, material_aurora,
@@ -540,8 +864,16 @@ func _update_aspect() -> void:
 
 	if material_waterfall:
 		_set_uniform_if_present(material_waterfall, "rows", waterfall_rows)
-	if material_basic_audio_shader:
-		_set_uniform_if_present(material_basic_audio_shader, "wf_rows", waterfall_rows)
+        if material_basic_audio_shader:
+                _set_uniform_if_present(material_basic_audio_shader, "wf_rows", waterfall_rows)
+
+func _get_current_aspect() -> float:
+        if _forced_aspect > 0.0:
+                return _forced_aspect
+        var s := get_viewport_rect().size
+        if s.y <= 0.0:
+                return 1.0
+        return s.x / max(1.0, s.y)
 
 
 # Spectrum
@@ -988,8 +1320,10 @@ func _seek_to_cue(idx: int) -> void:
 
 # Replace your _init_capture() with this:
 func _init_capture() -> void:
-	if bus_idx < 0:
-		bus_idx = AudioServer.get_bus_index(target_bus_name)
+        if _offline_mode:
+                return
+        if bus_idx < 0:
+                bus_idx = AudioServer.get_bus_index(target_bus_name)
 
 	# If you set capture_slot in the Inspector, it wins.
 	if capture_slot >= 0:
@@ -1028,11 +1362,14 @@ func _setup_waveform_resources() -> void:
 
 # Replace your _update_waveform_texture() with this:
 func _update_waveform_texture() -> void:
-	if !enable_waveform_capture or capture == null:
-		return
-	if _wave_img == null:
-		_setup_waveform_resources()
-		if _wave_img == null:
+        if _offline_mode:
+                _update_waveform_texture_offline()
+                return
+        if !enable_waveform_capture or capture == null:
+                return
+        if _wave_img == null:
+                _setup_waveform_resources()
+                if _wave_img == null:
 			return
 
 	var w := _wave_img.get_width()
@@ -1047,7 +1384,35 @@ func _update_waveform_texture() -> void:
 		if (x < count):
 			s = frames[x].x
 		else:  s =0.0
-		var v = 0.5 + 0.5 * clamp(s, -1.0, 1.0)
-		_wave_img.set_pixel(x, 0, Color(v, 0, 0, 1))
+                var v = 0.5 + 0.5 * clamp(s, -1.0, 1.0)
+                _wave_img.set_pixel(x, 0, Color(v, 0, 0, 1))
 
-	_wave_tex.update(_wave_img)  # push to GPU
+        _wave_tex.update(_wave_img)  # push to GPU
+
+func _update_waveform_texture_offline() -> void:
+        if _wave_img == null:
+                _setup_waveform_resources()
+                if _wave_img == null:
+                        return
+        if _offline_wave_samples.is_empty() or _offline_wave_rate <= 0.0:
+                return
+
+        var w := _wave_img.get_width()
+        if w <= 0:
+                return
+
+        var end_idx := int(round(_offline_playhead * _offline_wave_rate))
+        var start_idx := end_idx - w + 1
+        for x in range(w):
+                var idx := start_idx + x
+                if idx < 0:
+                        idx = 0
+                if idx >= _offline_wave_samples.size():
+                        idx = _offline_wave_samples.size() - 1
+                var sample := 0.0
+                if idx >= 0 and idx < _offline_wave_samples.size():
+                        sample = _offline_wave_samples[idx]
+                var v := 0.5 + 0.5 * clamp(sample, -1.0, 1.0)
+                _wave_img.set_pixel(x, 0, Color(v, 0, 0, 1))
+
+        _wave_tex.update(_wave_img)
