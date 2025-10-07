@@ -34,27 +34,27 @@ func _initialize() -> void:
 	var display_driver := DisplayServer.get_name()
 	var rendering_method := ""
 	var adapter := ""
-        var using_dummy_renderer := false
-        if Engine.has_singleton("RenderingServer"):
-                var rendering_server: Object = Engine.get_singleton("RenderingServer")
-                if rendering_server and rendering_server.has_method("get_rendering_method"):
-                        rendering_method = str(rendering_server.call("get_rendering_method"))
+	var using_dummy_renderer := false
+	if Engine.has_singleton("RenderingServer"):
+		var rendering_server: Object = Engine.get_singleton("RenderingServer")
+		if rendering_server and rendering_server.has_method("get_rendering_method"):
+			rendering_method = str(rendering_server.call("get_rendering_method"))
 		if rendering_server and rendering_server.has_method("get_rendering_device"):
 			var device: Object = rendering_server.call("get_rendering_device")
 			if device and device.has_method("get_device_name"):
 				adapter = str(device.call("get_device_name"))
 	if rendering_method == "":
 		rendering_method = str(ProjectSettings.get_setting("rendering/renderer/rendering_method", ""))
-        if rendering_method == "" or rendering_method == "dummy":
-                using_dummy_renderer = true
-        # Godot's headless display driver never emits frame_post_draw, so fall back to
-        # advancing the scene manually in that environment.
-        frame_post_draw_supported = display_driver != "headless"
-        print("[ExportRenderer] Display driver: %s | Rendering method: %s | Adapter: %s" % [display_driver, rendering_method, adapter])
-        if using_dummy_renderer:
-                var msg := "[ExportRenderer] No usable renderer detected (display driver: %s, rendering method: %s). Run without --headless or supply --rendering-driver opengl3 / use the GL Compatibility renderer." % [display_driver, rendering_method]
-                push_error(msg)
-                print(msg)
+	if rendering_method == "" or rendering_method == "dummy":
+		using_dummy_renderer = true
+		# Godot's headless display driver never emits frame_post_draw, so fall back to
+		# advancing the scene manually in that environment.
+	frame_post_draw_supported = display_driver != "headless"
+	print("[ExportRenderer] Display driver: %s | Rendering method: %s | Adapter: %s" % [display_driver, rendering_method, adapter])
+	if using_dummy_renderer:
+		var msg := "[ExportRenderer] No usable renderer detected (display driver: %s, rendering method: %s). Run without --headless or supply --rendering-driver opengl3 / use the GL Compatibility renderer." % [display_driver, rendering_method]
+		push_error(msg)
+		print(msg)
 		quit(1)
 		return
 
@@ -69,14 +69,14 @@ func _initialize() -> void:
 
 	# Load your scene into the SubViewport
 	var scene_path: String = args.get("scene", "scenes/AudioViz.tscn")
-        root_node = load(scene_path).instantiate()
-        _apply_tracklist_properties(root_node)
+	root_node = load(scene_path).instantiate()
+	_apply_tracklist_properties(root_node)
 
-        # Force offline mode before the node enters the scene tree so _ready() picks it up.
-        if root_node.has_method("set_offline_mode"):
-                root_node.call("set_offline_mode", true)
-        if root_node.has_method("set_frame_post_draw_supported"):
-                root_node.call("set_frame_post_draw_supported", frame_post_draw_supported)
+		# Force offline mode before the node enters the scene tree so _ready() picks it up.
+	if root_node.has_method("set_offline_mode"):
+		root_node.call("set_offline_mode", true)
+	if root_node.has_method("set_frame_post_draw_supported"):
+		root_node.call("set_frame_post_draw_supported", frame_post_draw_supported)
 
 	var features_path: String = args.get("features", "")
 	if features_path != "" and root_node.has_method("load_features_csv"):
@@ -87,11 +87,11 @@ func _initialize() -> void:
 
 	svp.add_child(root_node)
 
-        await root_node.ready
-        if root_node.has_method("set_offline_mode"):
-                root_node.call("set_offline_mode", true)
-        if root_node.has_method("set_frame_post_draw_supported"):
-                root_node.call("set_frame_post_draw_supported", frame_post_draw_supported)
+	await root_node.ready
+	if root_node.has_method("set_offline_mode"):
+		root_node.call("set_offline_mode", true)
+	if root_node.has_method("set_frame_post_draw_supported"):
+		root_node.call("set_frame_post_draw_supported", frame_post_draw_supported)
 	_apply_selected_track_entry()
 
 	# Apply settings that depend on the node being ready.
@@ -170,11 +170,11 @@ func _capture_subviewport_image() -> Image:
 	return img
 
 func _await_render_sync() -> void:
-        if frame_post_draw_supported and Engine.has_singleton("RenderingServer") and RenderingServer.has_signal("frame_post_draw"):
-                await RenderingServer.frame_post_draw
-                return
-        # Fallback: advance one more frame so textures become available (headless mode)
-        await self.process_frame
+	if frame_post_draw_supported and Engine.has_singleton("RenderingServer") and RenderingServer.has_signal("frame_post_draw"):
+		await RenderingServer.frame_post_draw
+		return
+		# Fallback: advance one more frame so textures become available (headless mode)
+	await self.process_frame
 
 func _parse_args() -> void:
 	var raw := OS.get_cmdline_args()
