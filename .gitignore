@@ -1,0 +1,3 @@
+# Offline rendering artifacts
+*.pyc
+__pycache__/
