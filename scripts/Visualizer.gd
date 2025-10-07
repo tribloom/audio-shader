@@ -49,7 +49,12 @@ var _wave_img: Image
 var _wave_tex: ImageTexture
 
 # Offline rendering support
+@export var auto_load_offline_data: bool = true
+@export var offline_features_path: String = ""
+@export var offline_waveform_base: String = ""
+
 var _offline_mode: bool = false
+var _headless_runtime: bool = false
 var _frame_post_draw_supported: bool = true  # set by ExportRenderer when running headless
 var _offline_playhead: float = 0.0
 var _offline_features: Array = []              # Array of {"frame": int, "t": float, "level": float, "kick": float, "bands": PackedFloat32Array}
@@ -216,6 +221,10 @@ func _ready() -> void:
 	_is_portrait = start_in_portrait
 	_apply_window_orientation()
 
+	_auto_load_offline_assets()
+	_detect_runtime_environment()
+	_ensure_offline_enabled()
+
 	player.bus = target_bus_name
 	bus_idx = AudioServer.get_bus_index(target_bus_name)
 	if bus_idx == -1:
@@ -264,6 +273,99 @@ func _build_shader_registry() -> void:
 	for i in range(n):
 		_register_shader(extra_shader_names[i], extra_shader_materials[i]) # no enum on purpose
 
+func _auto_load_offline_assets() -> void:
+	if !auto_load_offline_data:
+		return
+	var features_candidate := _choose_offline_features_path()
+	if features_candidate != "" and _offline_features.is_empty():
+		load_features_csv(features_candidate)
+	var waveform_candidate := _choose_offline_waveform_base()
+	if waveform_candidate != "" and _offline_wave_samples.is_empty():
+		load_waveform_binary(waveform_candidate)
+
+func _choose_offline_features_path() -> String:
+	var explicit := _normalize_resource_path(offline_features_path)
+	if explicit != "" and FileAccess.file_exists(explicit):
+		return explicit
+	if player != null and player.stream != null:
+		var stream_res := player.stream
+		if stream_res is Resource:
+			var res_path := (stream_res as Resource).resource_path
+			for candidate in _feature_candidates_for_stream(res_path):
+				if candidate != "" and FileAccess.file_exists(candidate):
+					return candidate
+	return ""
+
+func _feature_candidates_for_stream(stream_path: String) -> Array[String]:
+	var out: Array[String] = []
+	if stream_path == "":
+		return out
+	var suffixes := [".features.csv", "_features.csv", ".features", ".csv"]
+	var base := stream_path.get_basename()
+	for suffix in suffixes:
+		out.append(base + suffix)
+	if stream_path.begins_with("res://"):
+		var rel := stream_path.substr("res://".length())
+		var user_base := ("user://".path_join(rel)).get_basename()
+		for suffix in suffixes:
+			out.append(user_base + suffix)
+	return out
+
+func _choose_offline_waveform_base() -> String:
+	var explicit := _normalize_waveform_base(offline_waveform_base)
+	if explicit != "" and _waveform_base_exists(explicit):
+		return explicit
+	if player != null and player.stream != null:
+		var stream_res := player.stream
+		if stream_res is Resource:
+			var res_path := (stream_res as Resource).resource_path
+			for candidate in _waveform_candidates_for_stream(res_path):
+				if _waveform_base_exists(candidate):
+					return candidate
+	return ""
+
+func _waveform_candidates_for_stream(stream_path: String) -> Array[String]:
+	var out: Array[String] = []
+	if stream_path == "":
+		return out
+	var base := stream_path.get_basename()
+	var suffixes := [".waveform", "_waveform", ".wave", ""]
+	for suffix in suffixes:
+		if suffix == "":
+			out.append(base)
+		else:
+			out.append(base + suffix)
+	if stream_path.begins_with("res://"):
+		var rel := stream_path.substr("res://".length())
+		var user_base := ("user://".path_join(rel)).get_basename()
+		for suffix in suffixes:
+			if suffix == "":
+				out.append(user_base)
+			else:
+				out.append(user_base + suffix)
+	return out
+
+func _normalize_resource_path(raw: String) -> String:
+	var trimmed := raw.strip_edges()
+	if trimmed == "":
+		return ""
+	if trimmed.begins_with("res://") or trimmed.begins_with("user://") or trimmed.is_absolute_path():
+		return trimmed
+	return "res://".path_join(trimmed)
+
+func _normalize_waveform_base(raw: String) -> String:
+	var normalized := _normalize_resource_path(raw)
+	if normalized == "":
+		return ""
+	if normalized.ends_with(".f32") or normalized.ends_with(".json"):
+		return normalized.get_basename()
+	return normalized
+
+func _waveform_base_exists(base: String) -> bool:
+	if base == "":
+		return false
+	return FileAccess.file_exists(base + ".f32") and FileAccess.file_exists(base + ".json")
+
 func set_shader_by_name(name: String) -> bool:
 	var key := name.to_upper()
 	if _name_to_mode.has(key):
@@ -281,18 +383,47 @@ func set_shader_by_name(name: String) -> bool:
 	return false
 
 func _apply_shader_params(params: Dictionary) -> void:
-		var mat := color_rect.material as ShaderMaterial
-		if mat == null: return
-		for k in params.keys():
-				var v = params[k]
-				# Coerce arrays to Godot vectors/colors
-				if v is Array:
-						var a := v as Array
-						if a.size() == 2: v = Vector2(a[0], a[1])
-						elif a.size() == 3: v = Color(a[0], a[1], a[2], 1.0) # works for vec3/color
-						elif a.size() == 4: v = Color(a[0], a[1], a[2], a[3])
-				# Try to set; ignore unknown
-				mat.set_shader_parameter(k, v)
+	if params.is_empty():
+		return
+	var reserved := {
+		"features": true,
+		"features_path": true,
+		"waveform": true,
+		"waveform_base": true,
+		"offline": true,
+		"offline_mode": true,
+	}
+	if params.has("features") or params.has("features_path"):
+		var features_val := String(params.get("features", params.get("features_path", "")))
+		var resolved_features := _normalize_resource_path(features_val)
+		if resolved_features != "":
+			offline_features_path = resolved_features
+			load_features_csv(resolved_features)
+	if params.has("waveform") or params.has("waveform_base"):
+		var waveform_val := String(params.get("waveform", params.get("waveform_base", "")))
+		var resolved_waveform := _normalize_waveform_base(waveform_val)
+		if resolved_waveform != "":
+			offline_waveform_base = resolved_waveform
+			load_waveform_binary(resolved_waveform)
+	if params.has("offline") or params.has("offline_mode"):
+		var offline_flag = params.get("offline_mode", params.get("offline", false))
+		set_offline_mode(bool(offline_flag))
+	var mat := color_rect.material as ShaderMaterial
+	if mat == null:
+		return
+	for k in params.keys():
+		if reserved.has(k):
+			continue
+		var v = params[k]
+		if v is Array:
+			var a := v as Array
+			if a.size() == 2:
+				v = Vector2(a[0], a[1])
+			elif a.size() == 3:
+				v = Color(a[0], a[1], a[2], 1.0) # works for vec3/color
+			elif a.size() == 4:
+				v = Color(a[0], a[1], a[2], a[3])
+		mat.set_shader_parameter(k, v)
 
 func set_offline_mode(enable: bool) -> void:
 	_offline_mode = enable
@@ -407,6 +538,8 @@ func load_features_csv(path: String) -> void:
 
 	f.close()
 
+	offline_features_path = path
+
 	if dt_count > 0 and dt_accum > 0.0:
 			_offline_dt = dt_accum / float(dt_count)
 	elif _offline_features.size() > 1:
@@ -423,9 +556,12 @@ func load_features_csv(path: String) -> void:
 	_last_play_pos = 0.0
 
 	if _offline_features.size() > 0:
+			print("[Visualizer] Offline features loaded from %s (%d frames)" % [path, _offline_features.size()])
 			_offline_wave_duration = last_time
 	else:
 			_offline_wave_duration = 0.0
+
+	_ensure_offline_enabled()
 
 func load_waveform_binary(base_path: String) -> void:
 		if base_path == "":
@@ -467,13 +603,32 @@ func load_waveform_binary(base_path: String) -> void:
 						samples.append(bin_file.get_float())
 		bin_file.close()
 
+		offline_waveform_base = base_path
 		_offline_wave_samples = samples
+		if samples.size() > 0:
+			print("[Visualizer] Offline waveform loaded from %s (%d samples)" % [base_path, samples.size()])
 		if _offline_wave_rate > 0.0 and samples.size() > 0:
 				_offline_wave_duration = float(samples.size()) / _offline_wave_rate
 		elif _offline_features.size() > 0:
 				_offline_wave_duration = float(_offline_features.back().get("t", 0.0))
 		else:
 				_offline_wave_duration = 0.0
+
+	_ensure_offline_enabled()
+
+func _detect_runtime_environment() -> void:
+	var display_name := DisplayServer.get_name()
+	var os_headless := OS.has_feature("headless") or OS.has_feature("server")
+	_headless_runtime = display_name == "headless" or os_headless
+	if _headless_runtime and !_offline_mode:
+		print("[Visualizer] Headless runtime detected; forcing offline mode")
+		set_offline_mode(true)
+
+func _ensure_offline_enabled() -> void:
+	if _offline_mode:
+		return
+	if _offline_features.size() > 0 or _offline_wave_samples.size() > 0 or _headless_runtime:
+		set_offline_mode(true)
 
 func _init_analyzer() -> void:
 		if _offline_mode:
@@ -1373,8 +1528,8 @@ func _seek_to_cue(idx: int) -> void:
 
 # Replace your _init_capture() with this:
 func _init_capture() -> void:
-	if _offline_mode:
-			return
+	if _offline_mode or _headless_runtime:
+		return
 	if bus_idx < 0:
 		bus_idx = AudioServer.get_bus_index(target_bus_name)
 
