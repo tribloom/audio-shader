@@ -202,12 +202,17 @@ var _current_cue_idx: int = -1
 # -----------------------------------------------------------------------------------
 
 func _ready() -> void:
-	mode = start_mode
-	_build_shader_registry()
-	_apply_mode_material()
+        mode = start_mode
+        _build_shader_registry()
 
-	_is_portrait = start_in_portrait
-	_apply_window_orientation()
+        _setup_spectrum_resources()
+        _setup_waterfall_resources()
+        _setup_waveform_resources()
+
+        _apply_mode_material()
+
+        _is_portrait = start_in_portrait
+        _apply_window_orientation()
 
 	player.bus = target_bus_name
 	bus_idx = AudioServer.get_bus_index(target_bus_name)
@@ -219,11 +224,8 @@ func _ready() -> void:
 
 	call_deferred("_init_capture")
 
-	_setup_spectrum_resources()
-	_setup_waterfall_resources()
-	_setup_waveform_resources()
-	_bind_all_material_textures()
-	_update_aspect()
+        _bind_all_material_textures()
+        _update_aspect()
 
 	_build_overlay()
 	_parse_tracklist()
