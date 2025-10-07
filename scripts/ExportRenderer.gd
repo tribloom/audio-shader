@@ -30,6 +30,30 @@ var selected_track_entry: Dictionary = {}
 func _initialize() -> void:
 	_parse_args()
 
+	var display_driver := DisplayServer.get_name()
+	var rendering_method := ""
+	var adapter := ""
+	var using_dummy_renderer := false
+	if Engine.has_singleton("RenderingServer"):
+		var rendering_server: Object = Engine.get_singleton("RenderingServer")
+		if rendering_server and rendering_server.has_method("get_rendering_method"):
+			rendering_method = str(rendering_server.call("get_rendering_method"))
+		if rendering_server and rendering_server.has_method("get_rendering_device"):
+			var device: Object = rendering_server.call("get_rendering_device")
+			if device and device.has_method("get_device_name"):
+				adapter = str(device.call("get_device_name"))
+	if rendering_method == "":
+		rendering_method = str(ProjectSettings.get_setting("rendering/renderer/rendering_method", ""))
+	if rendering_method == "" or rendering_method == "dummy":
+		using_dummy_renderer = true
+	print("[ExportRenderer] Display driver: %s | Rendering method: %s | Adapter: %s" % [display_driver, rendering_method, adapter])
+	if using_dummy_renderer:
+		var msg := "[ExportRenderer] No usable renderer detected (display driver: %s, rendering method: %s). Run without --headless or supply --rendering-driver opengl3 / use the GL Compatibility renderer." % [display_driver, rendering_method]
+		push_error(msg)
+		print(msg)
+		quit(1)
+		return
+
 	# Create an offscreen SubViewport to render into
 	svp = SubViewport.new()
 	svp.disable_3d = true
@@ -73,7 +97,7 @@ func _initialize() -> void:
 			duration_s = offline_dur
 	DirAccess.make_dir_recursive_absolute(out_dir_fs)
 
-		# Deterministic frame loop
+	# Deterministic frame loop
 	var frames_total := int(ceil(duration_s * float(fps)))
 	if root_node.has_method("get_offline_frame_count"):
 		var offline_frames = int(root_node.call("get_offline_frame_count"))
@@ -93,44 +117,56 @@ func _initialize() -> void:
 		if root_node.has_method("set_playhead"):
 			root_node.call("set_playhead", t)
 
-			if should_log_frame:
-				print("[ExportRenderer] Awaiting process_frame for frame %d/%d (t=%.3fs)" % [i, frames_total, t])
+		if should_log_frame:
+			print("[ExportRenderer] Awaiting process_frame for frame %d/%d (t=%.3fs)" % [i, frames_total, t])
 
-			# Advance one engine frame, then read pixels
-			await self.process_frame
+		# Advance one engine frame, then wait for the render thread to flush
+		await self.process_frame
+		await _await_render_sync()
 
-			if should_log_frame:
-				print("[ExportRenderer] process_frame completed for frame %d/%d" % [i, frames_total])
+		if should_log_frame:
+			print("[ExportRenderer] process_frame completed for frame %d/%d" % [i, frames_total])
 
-			var img := _capture_subviewport_image()
-			if img == null:
-				return
+		var img := await _capture_subviewport_image()
+		if img == null:
+			return
 
-			var ext := ("jpg" if save_jpg else "png")
-			var filename := "%06d.%s" % [i, ext]
-			var path := out_dir_fs.path_join(filename)
-			if save_jpg:
-				img.save_jpg(path, int(round(jpg_quality * 100.0)))
-			else:
-				img.save_png(path)
+		var ext := ("jpg" if save_jpg else "png")
+		var filename := "%06d.%s" % [i, ext]
+		var path := out_dir_fs.path_join(filename)
+		if save_jpg:
+			img.save_jpg(path, int(round(jpg_quality * 100.0)))
+		else:
+			img.save_png(path)
 
-			if should_log_frame:
-				print("[ExportRenderer] Saved frame %d/%d -> %s" % [i, frames_total, path])
-		quit()
+		if should_log_frame:
+			print("[ExportRenderer] Saved frame %d/%d -> %s" % [i, frames_total, path])
+	quit()
+
 
 func _capture_subviewport_image() -> Image:
-		var tex := svp.get_texture()
-		if tex == null:
-				push_error("SubViewport returned no texture. The renderer is likely running in dummy/headless mode. Remove --headless or force a rendering driver such as --rendering-driver opengl3.")
-				quit(1)
-				return null
+	var tex := svp.get_texture()
+	if tex == null:
+		push_error("SubViewport returned no texture. The renderer is likely running in dummy/headless mode. Remove --headless or force a rendering driver such as --rendering-driver opengl3.")
+		quit(1)
+		return null
 
-		var img := tex.get_image()
+	var img := tex.get_image()
+	if img == null:
+		await _await_render_sync()
+		img = tex.get_image()
 		if img == null:
-				push_error("Failed to fetch SubViewport image. The renderer is likely running in dummy/headless mode. Remove --headless or force a rendering driver such as --rendering-driver opengl3.")
-				quit(1)
-				return null
-		return img
+			push_error("Failed to fetch SubViewport image after waiting for the renderer. The renderer may be running in dummy/headless mode. Remove --headless or force a rendering driver such as --rendering-driver opengl3.")
+			quit(1)
+			return null
+	return img
+
+func _await_render_sync() -> void:
+	if Engine.has_singleton("RenderingServer") and RenderingServer.has_signal("frame_post_draw"):
+		await RenderingServer.frame_post_draw
+		return
+	# Fallback: advance one more frame so textures become available
+	await self.process_frame
 
 func _parse_args() -> void:
 	var raw := OS.get_cmdline_args()
@@ -230,12 +266,12 @@ func _infer_duration(features_path: String) -> float:
 	return 60.0
 
 func _sanitize_cli_path(raw: String) -> String:
-		var trimmed := raw.strip_edges()
-		if trimmed.length() >= 2:
-				if (trimmed.begins_with("\"") and trimmed.ends_with("\"")) or (trimmed.begins_with("'") and trimmed.ends_with("'")):
-						trimmed = trimmed.substr(1, trimmed.length() - 2)
-		trimmed = trimmed.strip_edges()
-		return trimmed.replace("\\", "/")
+	var trimmed := raw.strip_edges()
+	if trimmed.length() >= 2:
+			if (trimmed.begins_with("\"") and trimmed.ends_with("\"")) or (trimmed.begins_with("'") and trimmed.ends_with("'")):
+					trimmed = trimmed.substr(1, trimmed.length() - 2)
+	trimmed = trimmed.strip_edges()
+	return trimmed.replace("\\", "/")
 
 func _resolve_cli_input_path(path: String) -> String:
 	var trimmed := path.strip_edges()
@@ -296,126 +332,126 @@ func _log_parsed_configuration(raw: PackedStringArray) -> void:
 		print("  %s: %s" % [item[0], item[1]])
 
 func _prepare_tracklist_override() -> void:
-		selected_track_entry = {}
-		tracklist_inline = PackedStringArray()
-		if tracklist_path == "":
-				return
+	selected_track_entry = {}
+	tracklist_inline = PackedStringArray()
+	if tracklist_path == "":
+			return
 
-		var lines := _read_tracklist_lines(tracklist_path)
-		if lines.is_empty():
-				push_warning("Tracklist not found: %s" % tracklist_path)
-				return
+	var lines := _read_tracklist_lines(tracklist_path)
+	if lines.is_empty():
+			push_warning("Tracklist not found: %s" % tracklist_path)
+			return
 
-		var entries := _parse_tracklist_entries(lines)
-		if entries.is_empty():
-				push_warning("Tracklist has no valid entries: %s" % tracklist_path)
-				return
+	var entries := _parse_tracklist_entries(lines)
+	if entries.is_empty():
+			push_warning("Tracklist has no valid entries: %s" % tracklist_path)
+			return
 
-		var idx = clamp(track_index - 1, 0, entries.size() - 1)
-		if track_index_specified and (idx != track_index - 1):
-				push_warning("Track index %d is out of range. Using entry %d." % [track_index, idx + 1])
-		selected_track_entry = entries[idx]
+	var idx = clamp(track_index - 1, 0, entries.size() - 1)
+	if track_index_specified and (idx != track_index - 1):
+			push_warning("Track index %d is out of range. Using entry %d." % [track_index, idx + 1])
+	selected_track_entry = entries[idx]
 
-		if track_index_specified:
-				var body := String(selected_track_entry.get("body", ""))
-				var line := "0:00 " + body
-				var inline := PackedStringArray()
-				inline.append(line)
-				tracklist_inline = inline
+	if track_index_specified:
+			var body := String(selected_track_entry.get("body", ""))
+			var line := "0:00 " + body
+			var inline := PackedStringArray()
+			inline.append(line)
+			tracklist_inline = inline
 
 func _read_tracklist_lines(path: String) -> PackedStringArray:
-		var lines := PackedStringArray()
-		var file := FileAccess.open(path, FileAccess.READ)
-		if file == null:
-				var global_path := ProjectSettings.globalize_path(path)
-				if global_path != path:
-						file = FileAccess.open(global_path, FileAccess.READ)
-		if file == null and (path.begins_with("res://") or path.begins_with("user://")):
-						var abs := ProjectSettings.globalize_path(path)
-						file = FileAccess.open(abs, FileAccess.READ)
-		if file == null and !path.begins_with("res://") and !path.begins_with("user://"):
-						var res_path := "res://".path_join(path)
-						if FileAccess.file_exists(res_path):
-								file = FileAccess.open(res_path, FileAccess.READ)
-		if file == null:
-				return lines
-		while not file.eof_reached():
-				lines.append(file.get_line())
-		file.close()
-		return lines
+	var lines := PackedStringArray()
+	var file := FileAccess.open(path, FileAccess.READ)
+	if file == null:
+			var global_path := ProjectSettings.globalize_path(path)
+			if global_path != path:
+					file = FileAccess.open(global_path, FileAccess.READ)
+	if file == null and (path.begins_with("res://") or path.begins_with("user://")):
+					var abs := ProjectSettings.globalize_path(path)
+					file = FileAccess.open(abs, FileAccess.READ)
+	if file == null and !path.begins_with("res://") and !path.begins_with("user://"):
+					var res_path := "res://".path_join(path)
+					if FileAccess.file_exists(res_path):
+							file = FileAccess.open(res_path, FileAccess.READ)
+	if file == null:
+			return lines
+	while not file.eof_reached():
+			lines.append(file.get_line())
+	file.close()
+	return lines
 
 func _parse_tracklist_entries(lines: PackedStringArray) -> Array:
-		var out: Array = []
-		for raw_line in lines:
-				var line := String(raw_line).strip_edges()
-				if line == "" or line.begins_with("#"):
-						continue
-				var space_idx := line.find(" ")
-				if space_idx < 0:
-						continue
-				var ts := line.substr(0, space_idx).strip_edges()
-				var body := line.substr(space_idx + 1).strip_edges()
-				if body == "":
-						continue
-				var title := body
-				var shader_name := ""
-				var params := {}
-				if body.find("|") >= 0:
-						var parts := body.split("|")
-						title = parts[0].strip_edges()
-						for i in range(1, parts.size()):
-								var seg := String(parts[i]).strip_edges()
-								if seg == "":
-										continue
-								if seg.begins_with("shader="):
-										shader_name = seg.substr("shader=".length()).strip_edges()
-								elif seg.begins_with("set="):
-										var json_txt := seg.substr("set=".length()).strip_edges()
-										var parsed = JSON.parse_string(json_txt)
-										if typeof(parsed) == TYPE_DICTIONARY:
-												params = parsed
-										else:
-												push_warning("Invalid JSON in tracklist set= directive: %s" % json_txt)
-				out.append({
-						"timestamp": ts,
-						"body": body,
-						"title": title,
-						"shader": shader_name,
-						"params": params,
-				})
-		return out
+	var out: Array = []
+	for raw_line in lines:
+			var line := String(raw_line).strip_edges()
+			if line == "" or line.begins_with("#"):
+					continue
+			var space_idx := line.find(" ")
+			if space_idx < 0:
+					continue
+			var ts := line.substr(0, space_idx).strip_edges()
+			var body := line.substr(space_idx + 1).strip_edges()
+			if body == "":
+					continue
+			var title := body
+			var shader_name := ""
+			var params := {}
+			if body.find("|") >= 0:
+					var parts := body.split("|")
+					title = parts[0].strip_edges()
+					for i in range(1, parts.size()):
+							var seg := String(parts[i]).strip_edges()
+							if seg == "":
+									continue
+							if seg.begins_with("shader="):
+									shader_name = seg.substr("shader=".length()).strip_edges()
+							elif seg.begins_with("set="):
+									var json_txt := seg.substr("set=".length()).strip_edges()
+									var parsed = JSON.parse_string(json_txt)
+									if typeof(parsed) == TYPE_DICTIONARY:
+											params = parsed
+									else:
+											push_warning("Invalid JSON in tracklist set= directive: %s" % json_txt)
+			out.append({
+					"timestamp": ts,
+					"body": body,
+					"title": title,
+					"shader": shader_name,
+					"params": params,
+			})
+	return out
 
 func _apply_tracklist_properties(node: Node) -> void:
-		if node == null:
-				return
-		var has_path := _has_property(node, "tracklist_path")
-		var has_lines := _has_property(node, "tracklist_lines")
-		if track_index_specified and tracklist_inline.size() > 0:
-				if has_path:
-						node.set("tracklist_path", "")
-				if has_lines:
-						node.set("tracklist_lines", tracklist_inline)
-		elif tracklist_path != "":
-				if has_path:
-						node.set("tracklist_path", tracklist_path)
+	if node == null:
+			return
+	var has_path := _has_property(node, "tracklist_path")
+	var has_lines := _has_property(node, "tracklist_lines")
+	if track_index_specified and tracklist_inline.size() > 0:
+			if has_path:
+					node.set("tracklist_path", "")
+			if has_lines:
+					node.set("tracklist_lines", tracklist_inline)
+	elif tracklist_path != "":
+			if has_path:
+					node.set("tracklist_path", tracklist_path)
 
 func _apply_selected_track_entry() -> void:
-		if selected_track_entry.is_empty() or root_node == null:
-				return
-		if root_node.has_method("apply_tracklist_entry"):
-				root_node.call("apply_tracklist_entry", selected_track_entry)
-				return
-		var shader_name := String(selected_track_entry.get("shader", ""))
-		if shader_name != "" and root_node.has_method("set_shader_by_name"):
-				root_node.call("set_shader_by_name", shader_name)
-		var params = selected_track_entry.get("params", {})
-		if params is Dictionary and (params as Dictionary).size() > 0 and root_node.has_method("_apply_shader_params"):
-				root_node.call("_apply_shader_params", params)
+	if selected_track_entry.is_empty() or root_node == null:
+			return
+	if root_node.has_method("apply_tracklist_entry"):
+			root_node.call("apply_tracklist_entry", selected_track_entry)
+			return
+	var shader_name := String(selected_track_entry.get("shader", ""))
+	if shader_name != "" and root_node.has_method("set_shader_by_name"):
+			root_node.call("set_shader_by_name", shader_name)
+	var params = selected_track_entry.get("params", {})
+	if params is Dictionary and (params as Dictionary).size() > 0 and root_node.has_method("_apply_shader_params"):
+			root_node.call("_apply_shader_params", params)
 
 func _has_property(obj: Object, prop: String) -> bool:
-		if obj == null:
-				return false
-		for item in obj.get_property_list():
-				if String(item.name) == prop:
-						return true
-		return false
+	if obj == null:
+			return false
+	for item in obj.get_property_list():
+			if String(item.name) == prop:
+					return true
+	return false
