@@ -60,13 +60,29 @@ func _initialize() -> void:
 	if waveform_path != "" and root_node.has_method("load_waveform_binary"):
 		root_node.call("load_waveform_binary", waveform_path)
 
-	duration_s = _infer_duration(features_path)
-	DirAccess.make_dir_recursive_absolute(out_dir_fs)
+        duration_s = _infer_duration(features_path)
+        if root_node.has_method("get_offline_duration"):
+                var offline_dur = float(root_node.call("get_offline_duration"))
+                if offline_dur > 0.0:
+                        duration_s = offline_dur
+        DirAccess.make_dir_recursive_absolute(out_dir_fs)
 
-	# Deterministic frame loop
-	var frames_total := int(ceil(duration_s * float(fps)))
+        # Deterministic frame loop
+        var frames_total := int(ceil(duration_s * float(fps)))
+        if root_node.has_method("get_offline_frame_count"):
+                var offline_frames = int(root_node.call("get_offline_frame_count"))
+                if offline_frames > 0:
+                        frames_total = offline_frames
         for i in range(frames_total):
                 var t := float(i) / float(fps)
+                if root_node.has_method("get_offline_time_at_index"):
+                        var t_override = root_node.call("get_offline_time_at_index", i)
+                        if typeof(t_override) == TYPE_FLOAT and t_override >= 0.0:
+                                t = t_override
+                elif root_node.has_method("get_offline_time_for_frame"):
+                        var frame_time = root_node.call("get_offline_time_for_frame", i)
+                        if typeof(frame_time) == TYPE_FLOAT and frame_time >= 0.0:
+                                t = frame_time
                 if root_node.has_method("set_playhead"):
                         root_node.call("set_playhead", t)
 

@@ -52,6 +52,7 @@ var _wave_tex: ImageTexture
 var _offline_mode: bool = false
 var _offline_playhead: float = 0.0
 var _offline_features: Array = []              # Array of {"frame": int, "t": float, "level": float, "kick": float, "bands": PackedFloat32Array}
+var _offline_frame_map: Dictionary = {}        # frame index -> feature array index
 var _offline_fps: float = 60.0
 var _offline_dt: float = 1.0 / 60.0
 var _offline_last_index: int = 0
@@ -292,19 +293,20 @@ func _apply_shader_params(params: Dictionary) -> void:
 				mat.set_shader_parameter(k, v)
 
 func set_offline_mode(enable: bool) -> void:
-		_offline_mode = enable
-		if enable:
-				started = true
-				if player:
-						player.stop()
-				analyzer = null
-				capture = null
-				_offline_last_index = 0
-		else:
-				_offline_playhead = 0.0
+                _offline_mode = enable
+                if enable:
+                                started = true
+                                if player:
+                                                player.stop()
+                                analyzer = null
+                                capture = null
+                                _offline_last_index = 0
+                                _offline_frame_map.clear()
+                else:
+                                _offline_playhead = 0.0
 
 func set_aspect(aspect: float) -> void:
-		if aspect <= 0.0:
+                if aspect <= 0.0:
 				return
 		_forced_aspect = aspect
 		_update_aspect()
@@ -320,12 +322,13 @@ func set_playhead(t: float) -> void:
 						_offline_last_index = 0
 
 func load_features_csv(path: String) -> void:
-	_offline_features.clear()
-	_offline_last_index = 0
-	if path == "":
-		return
+        _offline_features.clear()
+        _offline_last_index = 0
+        _offline_frame_map.clear()
+        if path == "":
+                return
 
-	var f := FileAccess.open(path, FileAccess.READ)
+        var f := FileAccess.open(path, FileAccess.READ)
 	if f == null:
 		push_error("Failed to open features CSV: %s" % path)
 		return
@@ -379,16 +382,17 @@ func load_features_csv(path: String) -> void:
 			else:
 				bands[bi] = 0.0
 
-		_offline_features.append({
-				"frame": frame_idx,
-				"t": t_val,
-				"level": clamp(level_val, 0.0, 1.0),
-				"kick": clamp(kick_val, 0.0, 1.0),
-				"bands": bands,
-		})
+                _offline_features.append({
+                                "frame": frame_idx,
+                                "t": t_val,
+                                "level": clamp(level_val, 0.0, 1.0),
+                                "kick": clamp(kick_val, 0.0, 1.0),
+                                "bands": bands,
+                })
+                _offline_frame_map[frame_idx] = _offline_features.size() - 1
 
-		if prev_time >= 0.0:
-				var step = max(0.0, t_val - prev_time)
+                if prev_time >= 0.0:
+                                var step = max(0.0, t_val - prev_time)
 				if step > 0.0:
 						dt_accum += step
 						dt_count += 1
@@ -717,8 +721,8 @@ func _process_offline() -> void:
 		_update_track_overlay(overlay_time)
 
 func _sample_offline_features(t: float) -> Dictionary:
-		if _offline_features.is_empty():
-				return {}
+                if _offline_features.is_empty():
+                                return {}
 
 		var idx = clamp(_offline_last_index, 0, _offline_features.size() - 1)
 		var current = _offline_features[idx]
@@ -731,8 +735,32 @@ func _sample_offline_features(t: float) -> Dictionary:
 				while idx + 1 < _offline_features.size() and t >= float(_offline_features[idx + 1].get("t", 0.0)):
 						idx += 1
 
-		_offline_last_index = idx
-		return _offline_features[idx]
+                _offline_last_index = idx
+                return _offline_features[idx]
+
+func get_offline_frame_count() -> int:
+        return _offline_features.size()
+
+func get_offline_time_at_index(index: int) -> float:
+        if index < 0 or index >= _offline_features.size():
+                return -1.0
+        return float(_offline_features[index].get("t", -1.0))
+
+func get_offline_time_for_frame(frame: int) -> float:
+        if _offline_features.is_empty():
+                return -1.0
+        if _offline_frame_map.has(frame):
+                var idx: int = _offline_frame_map[frame]
+                if idx >= 0 and idx < _offline_features.size():
+                        return float(_offline_features[idx].get("t", -1.0))
+        return -1.0
+
+func get_offline_duration() -> float:
+        if _offline_wave_duration > 0.0:
+                return _offline_wave_duration
+        if _offline_features.is_empty():
+                return 0.0
+        return float(_offline_features.back().get("t", 0.0))
 
 func _apply_offline_spectrum(bands: PackedFloat32Array) -> void:
 		if _spec_img == null:
