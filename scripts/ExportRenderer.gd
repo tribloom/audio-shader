@@ -47,8 +47,10 @@ func _initialize() -> void:
 		rendering_method = str(ProjectSettings.get_setting("rendering/renderer/rendering_method", ""))
 	if rendering_method == "" or rendering_method == "dummy":
 		using_dummy_renderer = true
+
 	# Godot's headless display driver never emits frame_post_draw, so fall back to
 	# advancing the scene manually in that environment.
+
 	frame_post_draw_supported = display_driver != "headless"
 	print("[ExportRenderer] Display driver: %s | Rendering method: %s | Adapter: %s" % [display_driver, rendering_method, adapter])
 	if using_dummy_renderer:
@@ -72,7 +74,7 @@ func _initialize() -> void:
 	root_node = load(scene_path).instantiate()
 	_apply_tracklist_properties(root_node)
 
-	# Force offline mode before the node enters the scene tree so _ready() picks it up.
+		# Force offline mode before the node enters the scene tree so _ready() picks it up.
 	if root_node.has_method("set_offline_mode"):
 		root_node.call("set_offline_mode", true)
 	if root_node.has_method("set_frame_post_draw_supported"):
