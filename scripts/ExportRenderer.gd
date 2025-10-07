@@ -47,8 +47,10 @@ func _initialize() -> void:
 		rendering_method = str(ProjectSettings.get_setting("rendering/renderer/rendering_method", ""))
 	if rendering_method == "" or rendering_method == "dummy":
 		using_dummy_renderer = true
-		# Godot's headless display driver never emits frame_post_draw, so fall back to
-		# advancing the scene manually in that environment.
+
+	# Godot's headless display driver never emits frame_post_draw, so fall back to
+	# advancing the scene manually in that environment.
+
 	frame_post_draw_supported = display_driver != "headless"
 	print("[ExportRenderer] Display driver: %s | Rendering method: %s | Adapter: %s" % [display_driver, rendering_method, adapter])
 	if using_dummy_renderer:
@@ -160,20 +162,38 @@ func _capture_subviewport_image() -> Image:
 		return null
 
 	var img := tex.get_image()
-	if img == null:
+	if img != null:
+		return img
+
+	var attempts := 0
+	while attempts < 4:
 		await _await_render_sync()
 		img = tex.get_image()
-		if img == null:
-			push_error("Failed to fetch SubViewport image after waiting for the renderer. The renderer may be running in dummy/headless mode. Remove --headless or force a rendering driver such as --rendering-driver opengl3.")
-			quit(1)
-			return null
-	return img
+		if img != null:
+			return img
+		attempts += 1
+
+	push_error("Failed to fetch SubViewport image after waiting for the renderer. The renderer may be running in dummy/headless mode. Remove --headless or force a rendering driver such as --rendering-driver opengl3.")
+	quit(1)
+	return null
 
 func _await_render_sync() -> void:
 	if frame_post_draw_supported and Engine.has_singleton("RenderingServer") and RenderingServer.has_signal("frame_post_draw"):
 		await RenderingServer.frame_post_draw
 		return
-		# Fallback: advance one more frame so textures become available (headless mode)
+
+	if Engine.has_singleton("RenderingServer"):
+		var did_sync := false
+		if RenderingServer.has_method("sync"):
+			RenderingServer.call("sync")
+			did_sync = true
+		if RenderingServer.has_method("draw"):
+			var frame_step := (1.0 / float(fps)) if fps > 0 else 0.0
+			RenderingServer.call("draw", false, frame_step)
+			return
+		if did_sync:
+			return
+
 	await self.process_frame
 
 func _parse_args() -> void:
