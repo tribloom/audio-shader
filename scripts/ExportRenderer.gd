@@ -193,8 +193,10 @@ func _resolve_cli_input_path(path: String) -> String:
 	var trimmed := path.strip_edges()
 	if trimmed == "":
 		return trimmed
-	if DirAccess.is_absolute_path(trimmed):
-		return trimmed
+
+        if trimmed.is_absolute_path():
+                return trimmed
+
 	if trimmed.begins_with("res://") or trimmed.begins_with("user://"):
 		return trimmed
 	var res_candidate := "res://".path_join(trimmed)
@@ -209,8 +211,10 @@ func _resolve_output_path(path: String) -> String:
 		trimmed = "export/frames"
 	if trimmed.begins_with("res://") or trimmed.begins_with("user://"):
 		return ProjectSettings.globalize_path(trimmed)
-	if DirAccess.is_absolute_path(trimmed):
-		return trimmed
+
+        if trimmed.is_absolute_path():
+                return trimmed
+
 	var project_root := ProjectSettings.globalize_path("res://")
 	return project_root.path_join(trimmed)
 
