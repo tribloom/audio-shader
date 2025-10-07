@@ -14,6 +14,7 @@ var fps: int = 60
 var width: int = 1920
 var height: int = 1080
 var out_dir: String = "export/frames"
+var out_dir_fs: String = ""
 var save_jpg: bool = false
 var jpg_quality: float = 0.9
 var duration_s: float = 0.0
@@ -35,10 +36,10 @@ func _initialize() -> void:
 	svp.transparent_bg = false
 	svp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	svp.size = Vector2i(width, height)
-		# Add under the SceneTree's root
+	# Add under the SceneTree's root
 	root.add_child(svp)
 
-		# Load your scene into the SubViewport
+	# Load your scene into the SubViewport
 	var scene_path: String = args.get("scene", "scenes/AudioViz.tscn")
 	root_node = load(scene_path).instantiate()
 	_apply_tracklist_properties(root_node)
@@ -47,7 +48,7 @@ func _initialize() -> void:
 	await root_node.ready
 	_apply_selected_track_entry()
 
-		# Enable offline mode + aspect + features
+	# Enable offline mode + aspect + features
 	if root_node.has_method("set_offline_mode"):
 		root_node.call("set_offline_mode", true)
 	if root_node.has_method("set_aspect"):
@@ -60,7 +61,7 @@ func _initialize() -> void:
 		root_node.call("load_waveform_binary", waveform_path)
 
 	duration_s = _infer_duration(features_path)
-	DirAccess.make_dir_recursive_absolute(out_dir)
+	DirAccess.make_dir_recursive_absolute(out_dir_fs)
 
 	# Deterministic frame loop
 	var frames_total := int(ceil(duration_s * float(fps)))
@@ -74,7 +75,8 @@ func _initialize() -> void:
 
 		var img: Image = svp.get_texture().get_image()
 		var ext := ("jpg" if save_jpg else "png")
-		var path := out_dir + "/" + ("%06d" % i) + "." + ext
+		var filename := "%06d.%s" % [i, ext]
+		var path := out_dir_fs.path_join(filename)
 		if save_jpg:
 			img.save_jpg(path, int(round(jpg_quality * 100.0)))
 		else:
@@ -85,45 +87,77 @@ func _initialize() -> void:
 func _parse_args() -> void:
 	var raw := OS.get_cmdline_args()
 	var pending_tracklist := ""
-	for a in raw:
-		if a.begins_with("--scene="):
-			var scene_val := _sanitize_cli_path(_extract_value(a, "--scene="))
-			if scene_val != "":
-				args.scene = scene_val
-		elif a.begins_with("--features="):
-			var features_val := _sanitize_cli_path(_extract_value(a, "--features="))
-			if features_val != "":
-				args.features = features_val
-		elif a.begins_with("--fps="):
-			fps = int(_extract_value(a, "--fps="))
-		elif a.begins_with("--w="):
-			width = int(_extract_value(a, "--w="))
-		elif a.begins_with("--h="):
-			height = int(_extract_value(a, "--h="))
-		elif a.begins_with("--out="):
-			var out_val := _sanitize_cli_path(_extract_value(a, "--out="))
-			if out_val != "":
-				out_dir = out_val
-		elif a.begins_with("--jpg="):
-			save_jpg = int(_extract_value(a, "--jpg=")) != 0
-		elif a.begins_with("--quality="):
-			jpg_quality = float(_extract_value(a, "--quality="))
-		elif a.begins_with("--waveform="):
-			var wave_val := _sanitize_cli_path(_extract_value(a, "--waveform="))
-			if wave_val != "":
-				waveform_base = wave_val
-		elif a.begins_with("--tracklist="):
-			var tracklist_val := _sanitize_cli_path(_extract_value(a, "--tracklist="))
-			if tracklist_val != "":
-				pending_tracklist = tracklist_val
-		elif a.begins_with("--track="):
-			track_index = max(1, int(_extract_value(a, "--track=")))
-			track_index_specified = true
+	var i := 0
+	while i < raw.size():
+		var current := raw[i]
+		if !current.begins_with("--"):
+			i += 1
+			continue
+		var key := current
+		var value := ""
+		var eq_idx := current.find("=")
+		if eq_idx >= 0:
+			key = current.substr(0, eq_idx)
+			value = current.substr(eq_idx + 1)
+		elif i + 1 < raw.size() and !raw[i + 1].begins_with("--"):
+			i += 1
+			value = raw[i]
+		match key:
+			"--scene":
+				var scene_val := _sanitize_cli_path(value)
+				if scene_val != "":
+					args.scene = scene_val
+			"--features":
+				var features_val := _resolve_cli_input_path(_sanitize_cli_path(value))
+				if features_val != "":
+					args.features = features_val
+			"--fps":
+				var fps_val := _sanitize_cli_path(value)
+				if fps_val != "":
+					fps = int(fps_val)
+			"--w":
+				var width_val := _sanitize_cli_path(value)
+				if width_val != "":
+					width = int(width_val)
+			"--h":
+				var height_val := _sanitize_cli_path(value)
+				if height_val != "":
+					height = int(height_val)
+			"--out":
+				var out_val := _sanitize_cli_path(value)
+				if out_val != "":
+					out_dir = out_val
+			"--jpg":
+				var jpg_val := _sanitize_cli_path(value)
+				if jpg_val == "":
+					save_jpg = true
+				else:
+					save_jpg = int(jpg_val) != 0
+			"--quality":
+				var q_val := _sanitize_cli_path(value)
+				if q_val != "":
+					jpg_quality = float(q_val)
+			"--waveform":
+				var wave_val := _resolve_cli_input_path(_sanitize_cli_path(value))
+				if wave_val != "":
+					waveform_base = wave_val
+			"--tracklist":
+				var tracklist_val := _resolve_cli_input_path(_sanitize_cli_path(value))
+				if tracklist_val != "":
+					pending_tracklist = tracklist_val
+			"--track":
+				var track_val := _sanitize_cli_path(value)
+				if track_val != "":
+					track_index = max(1, int(track_val))
+					track_index_specified = true
+		i += 1
 	if waveform_base != "":
 		args.waveform = waveform_base
+	out_dir_fs = _resolve_output_path(out_dir)
 	if pending_tracklist != "":
 		tracklist_path = pending_tracklist
 		_prepare_tracklist_override()
+	_log_parsed_configuration(raw)
 
 func _infer_duration(features_path: String) -> float:
 	if features_path == "":
@@ -147,9 +181,6 @@ func _infer_duration(features_path: String) -> float:
 			return float(count) / float(fps)
 	return 60.0
 
-func _extract_value(src: String, prefix: String) -> String:
-		return src.substr(prefix.length())
-
 func _sanitize_cli_path(raw: String) -> String:
 		var trimmed := raw.strip_edges()
 		if trimmed.length() >= 2:
@@ -157,6 +188,60 @@ func _sanitize_cli_path(raw: String) -> String:
 						trimmed = trimmed.substr(1, trimmed.length() - 2)
 		trimmed = trimmed.strip_edges()
 		return trimmed.replace("\\", "/")
+
+func _resolve_cli_input_path(path: String) -> String:
+	var trimmed := path.strip_edges()
+	if trimmed == "":
+		return trimmed
+	if DirAccess.is_absolute_path(trimmed):
+		return trimmed
+	if trimmed.begins_with("res://") or trimmed.begins_with("user://"):
+		return trimmed
+	var res_candidate := "res://".path_join(trimmed)
+	if FileAccess.file_exists(res_candidate):
+		return res_candidate
+	var project_root := ProjectSettings.globalize_path("res://")
+	return project_root.path_join(trimmed)
+
+func _resolve_output_path(path: String) -> String:
+	var trimmed := path.strip_edges()
+	if trimmed == "":
+		trimmed = "export/frames"
+	if trimmed.begins_with("res://") or trimmed.begins_with("user://"):
+		return ProjectSettings.globalize_path(trimmed)
+	if DirAccess.is_absolute_path(trimmed):
+		return trimmed
+	var project_root := ProjectSettings.globalize_path("res://")
+	return project_root.path_join(trimmed)
+
+func _log_parsed_configuration(raw: PackedStringArray) -> void:
+	var raw_line := "(none)"
+	if raw.size() > 0:
+		var builder := ""
+		for idx in range(raw.size()):
+			if idx > 0:
+				builder += " "
+			builder += raw[idx]
+		raw_line = builder
+	print("[ExportRenderer] Raw CLI args: %s" % raw_line)
+	var summary := [
+		["scene", args.get("scene", "scenes/AudioViz.tscn")],
+		["features", args.get("features", "")],
+		["waveform", args.get("waveform", "")],
+		["fps", fps],
+		["resolution", "%dx%d" % [width, height]],
+		["save_jpg", save_jpg],
+		["jpg_quality", jpg_quality],
+		["out_dir", out_dir],
+		["out_dir_fs", out_dir_fs],
+		["tracklist_path", tracklist_path],
+		["track_index", track_index],
+		["track_index_specified", track_index_specified],
+		["tracklist_inline_size", tracklist_inline.size()],
+	]
+	print("[ExportRenderer] Parsed configuration:")
+	for item in summary:
+		print("  %s: %s" % [item[0], item[1]])
 
 func _prepare_tracklist_override() -> void:
 		selected_track_entry = {}
