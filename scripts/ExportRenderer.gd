@@ -58,6 +58,8 @@ func _initialize() -> void:
 	svp.add_child(root_node)
 
 	await root_node.ready
+	if root_node.has_method("set_offline_mode"):
+		root_node.call("set_offline_mode", true)
 	_apply_selected_track_entry()
 
 	# Apply settings that depend on the node being ready.
@@ -88,8 +90,8 @@ func _initialize() -> void:
 			var frame_time = root_node.call("get_offline_time_for_frame", i)
 			if typeof(frame_time) == TYPE_FLOAT and frame_time >= 0.0:
 				t = frame_time
-			if root_node.has_method("set_playhead"):
-				root_node.call("set_playhead", t)
+		if root_node.has_method("set_playhead"):
+			root_node.call("set_playhead", t)
 
 			if should_log_frame:
 				print("[ExportRenderer] Awaiting process_frame for frame %d/%d (t=%.3fs)" % [i, frames_total, t])
