@@ -43,22 +43,26 @@ func _initialize() -> void:
 	var scene_path: String = args.get("scene", "scenes/AudioViz.tscn")
 	root_node = load(scene_path).instantiate()
 	_apply_tracklist_properties(root_node)
-	svp.add_child(root_node)
 
-	await root_node.ready
-	_apply_selected_track_entry()
-
-	# Enable offline mode + aspect + features
+	# Force offline mode before the node enters the scene tree so _ready() picks it up.
 	if root_node.has_method("set_offline_mode"):
 		root_node.call("set_offline_mode", true)
-	if root_node.has_method("set_aspect"):
-		root_node.call("set_aspect", float(width) / float(height))
+
 	var features_path: String = args.get("features", "")
 	if features_path != "" and root_node.has_method("load_features_csv"):
 		root_node.call("load_features_csv", features_path)
 	var waveform_path: String = args.get("waveform", "")
 	if waveform_path != "" and root_node.has_method("load_waveform_binary"):
 		root_node.call("load_waveform_binary", waveform_path)
+
+	svp.add_child(root_node)
+
+	await root_node.ready
+	_apply_selected_track_entry()
+
+	# Apply settings that depend on the node being ready.
+	if root_node.has_method("set_aspect"):
+		root_node.call("set_aspect", float(width) / float(height))
 
 	duration_s = _infer_duration(features_path)
 	if root_node.has_method("get_offline_duration"):
