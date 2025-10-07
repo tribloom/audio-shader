@@ -19,6 +19,7 @@ var save_jpg: bool = false
 var jpg_quality: float = 0.9
 var duration_s: float = 0.0
 var waveform_base: String = ""
+var frame_post_draw_supported: bool = true
 
 # Tracklist overrides for headless mode
 var tracklist_path: String = ""
@@ -46,6 +47,9 @@ func _initialize() -> void:
 		rendering_method = str(ProjectSettings.get_setting("rendering/renderer/rendering_method", ""))
 	if rendering_method == "" or rendering_method == "dummy":
 		using_dummy_renderer = true
+	# Godot's headless display driver never emits frame_post_draw, so fall back to
+	# advancing the scene manually in that environment.
+	frame_post_draw_supported = display_driver != "headless"
 	print("[ExportRenderer] Display driver: %s | Rendering method: %s | Adapter: %s" % [display_driver, rendering_method, adapter])
 	if using_dummy_renderer:
 		var msg := "[ExportRenderer] No usable renderer detected (display driver: %s, rendering method: %s). Run without --headless or supply --rendering-driver opengl3 / use the GL Compatibility renderer." % [display_driver, rendering_method]
@@ -71,6 +75,8 @@ func _initialize() -> void:
 	# Force offline mode before the node enters the scene tree so _ready() picks it up.
 	if root_node.has_method("set_offline_mode"):
 		root_node.call("set_offline_mode", true)
+	if root_node.has_method("set_frame_post_draw_supported"):
+		root_node.call("set_frame_post_draw_supported", frame_post_draw_supported)
 
 	var features_path: String = args.get("features", "")
 	if features_path != "" and root_node.has_method("load_features_csv"):
@@ -84,6 +90,8 @@ func _initialize() -> void:
 	await root_node.ready
 	if root_node.has_method("set_offline_mode"):
 		root_node.call("set_offline_mode", true)
+	if root_node.has_method("set_frame_post_draw_supported"):
+		root_node.call("set_frame_post_draw_supported", frame_post_draw_supported)
 	_apply_selected_track_entry()
 
 	# Apply settings that depend on the node being ready.
@@ -152,20 +160,38 @@ func _capture_subviewport_image() -> Image:
 		return null
 
 	var img := tex.get_image()
-	if img == null:
+	if img != null:
+		return img
+
+	var attempts := 0
+	while attempts < 4:
 		await _await_render_sync()
 		img = tex.get_image()
-		if img == null:
-			push_error("Failed to fetch SubViewport image after waiting for the renderer. The renderer may be running in dummy/headless mode. Remove --headless or force a rendering driver such as --rendering-driver opengl3.")
-			quit(1)
-			return null
-	return img
+		if img != null:
+			return img
+		attempts += 1
+
+	push_error("Failed to fetch SubViewport image after waiting for the renderer. The renderer may be running in dummy/headless mode. Remove --headless or force a rendering driver such as --rendering-driver opengl3.")
+	quit(1)
+	return null
 
 func _await_render_sync() -> void:
-	if Engine.has_singleton("RenderingServer") and RenderingServer.has_signal("frame_post_draw"):
+	if frame_post_draw_supported and Engine.has_singleton("RenderingServer") and RenderingServer.has_signal("frame_post_draw"):
 		await RenderingServer.frame_post_draw
 		return
-	# Fallback: advance one more frame so textures become available
+
+	if Engine.has_singleton("RenderingServer"):
+		var did_sync := false
+		if RenderingServer.has_method("sync"):
+			RenderingServer.call("sync")
+			did_sync = true
+		if RenderingServer.has_method("draw"):
+			var frame_step := (1.0 / float(fps)) if fps > 0 else 0.0
+			RenderingServer.call("draw", false, frame_step)
+			return
+		if did_sync:
+			return
+
 	await self.process_frame
 
 func _parse_args() -> void:

@@ -50,6 +50,7 @@ var _wave_tex: ImageTexture
 
 # Offline rendering support
 var _offline_mode: bool = false
+var _frame_post_draw_supported: bool = true  # set by ExportRenderer when running headless
 var _offline_playhead: float = 0.0
 var _offline_features: Array = []              # Array of {"frame": int, "t": float, "level": float, "kick": float, "bands": PackedFloat32Array}
 var _offline_frame_map: Dictionary = {}        # frame index -> feature array index
@@ -305,6 +306,9 @@ func set_offline_mode(enable: bool) -> void:
 			_offline_frame_map.clear()
 	else:
 		_offline_playhead = 0.0
+
+func set_frame_post_draw_supported(enable: bool) -> void:
+	_frame_post_draw_supported = enable
 
 func set_aspect(aspect: float) -> void:
 	if aspect <= 0.0:
