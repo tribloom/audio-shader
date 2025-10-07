@@ -79,6 +79,7 @@ func _initialize() -> void:
 			frames_total = offline_frames
 	for i in range(frames_total):
 		var t := float(i) / float(fps)
+		var should_log_frame := (i == 0 or i % 3600 == 0)
 		if root_node.has_method("get_offline_time_at_index"):
 			var t_override = root_node.call("get_offline_time_at_index", i)
 			if typeof(t_override) == TYPE_FLOAT and t_override >= 0.0:
@@ -90,9 +91,14 @@ func _initialize() -> void:
 			if root_node.has_method("set_playhead"):
 				root_node.call("set_playhead", t)
 
+			if should_log_frame:
+				print("[ExportRenderer] Awaiting process_frame for frame %d/%d (t=%.3fs)" % [i, frames_total, t])
 
-				# Advance one engine frame, then read pixels
+			# Advance one engine frame, then read pixels
 			await self.process_frame
+
+			if should_log_frame:
+				print("[ExportRenderer] process_frame completed for frame %d/%d" % [i, frames_total])
 
 			var img := _capture_subviewport_image()
 			if img == null:
@@ -106,6 +112,8 @@ func _initialize() -> void:
 			else:
 				img.save_png(path)
 
+			if should_log_frame:
+				print("[ExportRenderer] Saved frame %d/%d -> %s" % [i, frames_total, path])
 		quit()
 
 func _capture_subviewport_image() -> Image:
