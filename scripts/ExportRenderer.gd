@@ -65,41 +65,41 @@ func _initialize() -> void:
 
 	# Deterministic frame loop
 	var frames_total := int(ceil(duration_s * float(fps)))
-        for i in range(frames_total):
-                var t := float(i) / float(fps)
-                if root_node.has_method("set_playhead"):
-                        root_node.call("set_playhead", t)
+	for i in range(frames_total):
+		var t := float(i) / float(fps)
+		if root_node.has_method("set_playhead"):
+			root_node.call("set_playhead", t)
 
-                # Advance one engine frame, then read pixels
-                await self.process_frame
+				# Advance one engine frame, then read pixels
+			await self.process_frame
 
-                var img := _capture_subviewport_image()
-                if img == null:
-                        return
+			var img := _capture_subviewport_image()
+			if img == null:
+				return
 
-                var ext := ("jpg" if save_jpg else "png")
-                var filename := "%06d.%s" % [i, ext]
-                var path := out_dir_fs.path_join(filename)
-                if save_jpg:
-                        img.save_jpg(path, int(round(jpg_quality * 100.0)))
-                else:
-                        img.save_png(path)
+			var ext := ("jpg" if save_jpg else "png")
+			var filename := "%06d.%s" % [i, ext]
+			var path := out_dir_fs.path_join(filename)
+			if save_jpg:
+				img.save_jpg(path, int(round(jpg_quality * 100.0)))
+			else:
+				img.save_png(path)
 
-        quit()
+		quit()
 
 func _capture_subviewport_image() -> Image:
-        var tex := svp.get_texture()
-        if tex == null:
-                push_error("SubViewport returned no texture. The renderer is likely running in dummy/headless mode. Remove --headless or force a rendering driver such as --rendering-driver opengl3.")
-                quit(1)
-                return null
+		var tex := svp.get_texture()
+		if tex == null:
+				push_error("SubViewport returned no texture. The renderer is likely running in dummy/headless mode. Remove --headless or force a rendering driver such as --rendering-driver opengl3.")
+				quit(1)
+				return null
 
-        var img := tex.get_image()
-        if img == null:
-                push_error("Failed to fetch SubViewport image. The renderer is likely running in dummy/headless mode. Remove --headless or force a rendering driver such as --rendering-driver opengl3.")
-                quit(1)
-                return null
-        return img
+		var img := tex.get_image()
+		if img == null:
+				push_error("Failed to fetch SubViewport image. The renderer is likely running in dummy/headless mode. Remove --headless or force a rendering driver such as --rendering-driver opengl3.")
+				quit(1)
+				return null
+		return img
 
 func _parse_args() -> void:
 	var raw := OS.get_cmdline_args()
