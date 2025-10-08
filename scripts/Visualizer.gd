@@ -54,6 +54,7 @@ var _wave_tex: ImageTexture
 @export var offline_waveform_base: String = ""
 
 var _offline_mode: bool = false
+var _export_renderer_runtime: bool = false
 var _headless_runtime: bool = false
 var _frame_post_draw_supported: bool = true  # set by ExportRenderer when running headless
 var _offline_playhead: float = 0.0
@@ -624,14 +625,31 @@ func _detect_runtime_environment() -> void:
 		print("[Visualizer] Headless runtime detected; forcing offline mode")
 		set_offline_mode(true)
 
+	var main_loop := Engine.get_main_loop()
+	if main_loop != null:
+		var identified := false
+		var loop_script := main_loop.get_script()
+		if loop_script is Script:
+			var script_path := (loop_script as Script).resource_path
+			if script_path != "" and script_path.ends_with("scripts/ExportRenderer.gd"):
+				identified = true
+		if !identified:
+			var class_name := String(main_loop.get_class())
+			if class_name.find("ExportRenderer") != -1:
+				identified = true
+		if identified:
+			_export_renderer_runtime = true
+			if !_offline_mode:
+				set_offline_mode(true)
+
 func _ensure_offline_enabled() -> void:
 	if _offline_mode:
 		return
-	if _offline_features.size() > 0 or _offline_wave_samples.size() > 0 or _headless_runtime:
+	if _offline_features.size() > 0 or _offline_wave_samples.size() > 0 or _headless_runtime or _export_renderer_runtime:
 		set_offline_mode(true)
 
 func _init_analyzer() -> void:
-		if _offline_mode:
+		if _offline_mode or _export_renderer_runtime:
 				return
 		analyzer = AudioServer.get_bus_effect_instance(bus_idx, analyzer_slot) as AudioEffectSpectrumAnalyzerInstance
 		if analyzer == null:
@@ -799,6 +817,7 @@ func _process(dt: float) -> void:
 		_set_uniform_if_present(m, "treble_in", clamp(treb_sm, 0.0, 1.0))
 		_set_uniform_if_present(m, "tone_in", clamp(tone_sm, 0.0, 1.0))
 		_set_uniform_if_present(m, "kick_env", clamp(_kick_env, 0.0, 1.0))  # for “center flash” beats
+		_broadcast_audio_uniforms()
 
 	_update_aspect()
 
@@ -876,6 +895,7 @@ func _process_offline() -> void:
 				_set_uniform_if_present(mat, "treble_in", clamp(treb_sm, 0.0, 1.0))
 				_set_uniform_if_present(mat, "tone_in", clamp(tone_sm, 0.0, 1.0))
 				_set_uniform_if_present(mat, "kick_env", clamp(_kick_env, 0.0, 1.0))
+				_broadcast_audio_uniforms()
 
 		_update_aspect()
 		_update_track_overlay(overlay_time)
@@ -978,6 +998,65 @@ func _shader_has_uniform(m: ShaderMaterial, name: String) -> bool:
 func _set_uniform_if_present(m: ShaderMaterial, name: String, v) -> void:
 	if _shader_has_uniform(m, name):
 		m.set_shader_parameter(name, v)
+
+func _broadcast_audio_uniforms() -> void:
+	var level_val := clamp(level_sm * level_boost, 0.0, 1.0)
+	var bass_val := clamp(bass_sm, 0.0, 1.0)
+	var treb_val := clamp(treb_sm, 0.0, 1.0)
+	var tone_val := clamp(tone_sm, 0.0, 1.0)
+	var kick_val := clamp(kick_sm * kick_boost, 0.0, 1.0)
+	var kick_in_val := clamp(kick_sm, 0.0, 1.0)
+	var kick_env_val := clamp(_kick_env, 0.0, 1.0)
+
+	var mats := [
+		material_chromatic,
+		material_circle,
+		material_bars,
+		material_line,
+		material_waterfall,
+		material_aurora,
+		material_universe,
+		material_universe_alt,
+		material_basic_audio_shader,
+		material_power_particle,
+		material_sonic_fusion,
+		material_fractal_colors,
+		material_bubbles,
+		_custom_active_material,
+	]
+	for extra in extra_shader_materials:
+		mats.append(extra)
+
+	for m in mats:
+		_apply_audio_uniforms_to_material(m, level_val, bass_val, treb_val, tone_val, kick_val, kick_in_val, kick_env_val)
+
+func _apply_audio_uniforms_to_material(
+	m: ShaderMaterial,
+	level_val: float,
+	bass_val: float,
+	treb_val: float,
+	tone_val: float,
+	kick_val: float,
+	kick_in_val: float,
+	kick_env_val: float
+) -> void:
+	if m == null:
+		return
+	_set_uniform_if_present(m, "level", level_val)
+	_set_uniform_if_present(m, "level_in", level_val)
+	_set_uniform_if_present(m, "audio_level", level_val)
+	_set_uniform_if_present(m, "bass", bass_val)
+	_set_uniform_if_present(m, "bass_in", bass_val)
+	_set_uniform_if_present(m, "audio_bass", bass_val)
+	_set_uniform_if_present(m, "treble", treb_val)
+	_set_uniform_if_present(m, "treble_in", treb_val)
+	_set_uniform_if_present(m, "audio_treble", treb_val)
+	_set_uniform_if_present(m, "tone", tone_val)
+	_set_uniform_if_present(m, "tone_in", tone_val)
+	_set_uniform_if_present(m, "kick", kick_val)
+	_set_uniform_if_present(m, "kick_in", kick_in_val)
+	_set_uniform_if_present(m, "kick_env", kick_env_val)
+
 
 func _apply_static_shader_inputs(m: ShaderMaterial) -> void:
 	if m == null:
@@ -1528,7 +1607,7 @@ func _seek_to_cue(idx: int) -> void:
 
 # Replace your _init_capture() with this:
 func _init_capture() -> void:
-	if _offline_mode or _headless_runtime:
+	if _offline_mode or _headless_runtime or _export_renderer_runtime:
 		return
 	if bus_idx < 0:
 		bus_idx = AudioServer.get_bus_index(target_bus_name)
