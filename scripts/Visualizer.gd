@@ -162,8 +162,10 @@ var _wf_head: int = 0
 
 # Debugging helpers
 @export_group("Debug")
-@export var debug_log_audio_uniforms: bool = false
-@export var debug_log_interval: float = 1.0
+
+@export var debug_log_audio_uniforms: bool = false   # when true, prints audio uniform values sent to shaders
+@export var debug_log_interval: float = 1.0          # seconds between debug log samples
+
 var _debug_log_accum: float = 0.0
 
 @export_group("")
@@ -642,8 +644,8 @@ func _detect_runtime_environment() -> void:
 			if script_path != "" and script_path.ends_with("scripts/ExportRenderer.gd"):
 				identified = true
 		if !identified:
-			var class_name := String(main_loop.get_class())
-			if class_name.find("ExportRenderer") != -1:
+			var main_loop_class := String(main_loop.get_class())
+			if main_loop_class.find("ExportRenderer") != -1:
 				identified = true
 		if identified:
 			_export_renderer_runtime = true
@@ -1076,6 +1078,7 @@ func _debug_trace_audio_uniforms(dt: float) -> void:
 	var interval := max(0.1, debug_log_interval)
 	_debug_log_accum += dt
 	if _debug_log_accum < interval:
+
 		return
 	_debug_log_accum = 0.0
 
@@ -1087,16 +1090,7 @@ func _debug_trace_audio_uniforms(dt: float) -> void:
 	var kick_in_val := clamp(kick_sm, 0.0, 1.0)
 	var kick_env_val := clamp(_kick_env, 0.0, 1.0)
 
-	var mat := color_rect.material as ShaderMaterial
-	var shader_name := "<no material>"
-	if mat and mat.shader:
-		shader_name = mat.shader.resource_path
-		if shader_name == "":
-			shader_name = mat.shader.resource_name
-		if shader_name == "":
-			shader_name = "<unnamed shader>"
-
-	print("[Visualizer] Audio uniforms -> level=%.3f bass=%.3f treble=%.3f tone=%.3f kick=%.3f kick_in=%.3f env=%.3f shader=%s" % [
+	print("[Visualizer] Audio uniforms -> level=%.3f bass=%.3f treble=%.3f tone=%.3f kick=%.3f kick_in=%.3f env=%.3f" % [
 		level_val,
 		bass_val,
 		treb_val,
@@ -1104,35 +1098,89 @@ func _debug_trace_audio_uniforms(dt: float) -> void:
 		kick_val,
 		kick_in_val,
 		kick_env_val,
-		shader_name,
 	])
 
-	if mat:
+	var tracked_mats: Array[ShaderMaterial] = []
+	_append_debug_material(tracked_mats, color_rect.material as ShaderMaterial)
+	for base_mat in [
+		material_chromatic,
+		material_circle,
+		material_bars,
+		material_line,
+		material_waterfall,
+		material_aurora,
+		material_universe,
+		material_universe_alt,
+		material_basic_audio_shader,
+		material_power_particle,
+		material_sonic_fusion,
+		material_fractal_colors,
+		material_bubbles,
+	]:
+		_append_debug_material(tracked_mats, base_mat)
+	for extra_mat in extra_shader_materials:
+		_append_debug_material(tracked_mats, extra_mat)
+	_append_debug_material(tracked_mats, _custom_active_material)
+
+	if tracked_mats.is_empty():
+		print("[Visualizer] (debug) No shader materials available to sample.")
+		return
+
+	var uniform_names := [
+		"level",
+		"level_in",
+		"audio_level",
+		"bass",
+		"bass_in",
+		"audio_bass",
+		"treble",
+		"treble_in",
+		"audio_treble",
+		"tone",
+		"tone_in",
+		"kick",
+		"kick_in",
+		"kick_env",
+	]
+
+	for mat in tracked_mats:
+		var shader_label := _describe_shader_for_debug(mat)
+		if mat == null:
+			print("    %s -> <null material>" % shader_label)
+			continue
+
 		var sampled: PackedStringArray = []
-		for uniform_name in [
-			"level",
-			"level_in",
-			"audio_level",
-			"bass",
-			"bass_in",
-			"audio_bass",
-			"treble",
-			"treble_in",
-			"audio_treble",
-			"tone",
-			"tone_in",
-			"kick",
-			"kick_in",
-			"kick_env",
-		]:
+		for uniform_name in uniform_names:
 			if _shader_has_uniform(mat, uniform_name):
 				var value = mat.get_shader_parameter(uniform_name)
 				if value is float:
 					sampled.append("%s=%.3f" % [uniform_name, float(value)])
 				else:
 					sampled.append("%s=%s" % [uniform_name, str(value)])
-		if !sampled.is_empty():
-			print("[Visualizer] Shader parameters (%s): %s" % [shader_name, ", ".join(sampled)])
+		if sampled.is_empty():
+			print("    %s -> <no tracked uniforms>" % shader_label)
+		else:
+			print("    %s -> %s" % [shader_label, ", ".join(sampled)])
+
+
+func _append_debug_material(into: Array[ShaderMaterial], mat: ShaderMaterial) -> void:
+	if mat == null:
+		return
+	if into.find(mat) == -1:
+		into.append(mat)
+
+
+func _describe_shader_for_debug(mat: ShaderMaterial) -> String:
+	if mat == null:
+		return "<no material>"
+	if mat.shader == null:
+		return "<no shader>"
+	var shader_name := mat.shader.resource_path
+	if shader_name == "":
+		shader_name = mat.shader.resource_name
+	if shader_name == "":
+		shader_name = "<unnamed shader>"
+	return shader_name
 
 
 func _apply_static_shader_inputs(m: ShaderMaterial) -> void:
