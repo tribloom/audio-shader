@@ -871,69 +871,69 @@ func _process_offline() -> void:
 		_update_track_overlay(overlay_time)
 		return
 
-		var sample := _sample_offline_features(_offline_playhead)
-		if sample.is_empty():
-				_update_track_overlay(overlay_time)
-				return
+	var sample := _sample_offline_features(_offline_playhead)
+	if sample.is_empty():
+		_update_track_overlay(overlay_time)
+		return
 
-		level_sm = float(sample.get("level", 0.0))
-		kick_sm  = float(sample.get("kick", 0.0))
+	level_sm = float(sample.get("level", 0.0))
+	kick_sm = float(sample.get("kick", 0.0))
 
-		var bands = sample.get("bands", PackedFloat32Array())
-		if bands is PackedFloat32Array:
-				var arr := bands as PackedFloat32Array
-				if arr.size() > 0:
-						bass_sm = clamp(arr[0], 0.0, 1.0)
-						treb_sm = clamp(arr[arr.size() - 1], 0.0, 1.0)
-						tone_sm = _estimate_tone_from_bands(arr)
-						_apply_offline_spectrum(arr)
-				else:
-						_apply_offline_spectrum(PackedFloat32Array())
+	var bands = sample.get("bands", PackedFloat32Array())
+	if bands is PackedFloat32Array:
+		var arr := bands as PackedFloat32Array
+		if arr.size() > 0:
+			bass_sm = clamp(arr[0], 0.0, 1.0)
+			treb_sm = clamp(arr[arr.size() - 1], 0.0, 1.0)
+			tone_sm = _estimate_tone_from_bands(arr)
+			_apply_offline_spectrum(arr)
 		else:
-				_apply_offline_spectrum(PackedFloat32Array())
+			_apply_offline_spectrum(PackedFloat32Array())
+	else:
+		_apply_offline_spectrum(PackedFloat32Array())
 
-		var effective_dt := _offline_dt
-		if effective_dt <= 0.0:
-				effective_dt = 1.0 / max(1.0, _offline_fps)
-		if effective_dt <= 0.0:
-				effective_dt = 1.0 / 60.0
+	var effective_dt := _offline_dt
+	if effective_dt <= 0.0:
+		effective_dt = 1.0 / max(1.0, _offline_fps)
+	if effective_dt <= 0.0:
+		effective_dt = 1.0 / 60.0
 
-		_update_waveform_texture()
-		_update_spec_texture()
-		_advance_waterfall()
-		_update_kick_envelope(effective_dt)
+	_update_waveform_texture()
+	_update_spec_texture()
+	_advance_waterfall()
+	_update_kick_envelope(effective_dt)
 
-		var mat := color_rect.material as ShaderMaterial
-		if mat:
-				match mode:
-						Mode.CHROMA:
-								mat.set_shader_parameter("level", clamp(level_sm * level_boost, 0.0, 1.0))
-								mat.set_shader_parameter("kick",  clamp(kick_sm  * kick_boost,  0.0, 1.0))
-						Mode.CIRCLE:
-								mat.set_shader_parameter("bass",   clamp(bass_sm,  0.0, 1.0))
-								mat.set_shader_parameter("treble", clamp(treb_sm,  0.0, 1.0))
-								mat.set_shader_parameter("tone",   clamp(tone_sm,  0.0, 1.0))
-						Mode.WATERFALL:
-								if material_waterfall:
-										var head_norm := float(_wf_head) / float(max(1, waterfall_rows))
-										material_waterfall.set_shader_parameter("head_norm", head_norm)
-						Mode.AURORA, Mode.UNIVERSE, Mode.UNIVERSE_ALT:
-								mat.set_shader_parameter("kick_in",  clamp(kick_sm,   0.0, 1.0))
-								mat.set_shader_parameter("kick_env", clamp(_kick_env, 0.0, 1.0))
-								mat.set_shader_parameter("ring_age", clamp(_ring_age, 0.0, 1.0))
-						Mode.BASIC_AUDIO:
-								if material_basic_audio_shader:
-										var head_norm2 := float(_wf_head) / float(max(1, waterfall_rows))
-										material_basic_audio_shader.set_shader_parameter("head_norm", head_norm2)
+	var mat := color_rect.material as ShaderMaterial
+	if mat:
+		match mode:
+			Mode.CHROMA:
+				mat.set_shader_parameter("level", clamp(level_sm * level_boost, 0.0, 1.0))
+				mat.set_shader_parameter("kick", clamp(kick_sm * kick_boost, 0.0, 1.0))
+			Mode.CIRCLE:
+				mat.set_shader_parameter("bass", clamp(bass_sm, 0.0, 1.0))
+				mat.set_shader_parameter("treble", clamp(treb_sm, 0.0, 1.0))
+				mat.set_shader_parameter("tone", clamp(tone_sm, 0.0, 1.0))
+			Mode.WATERFALL:
+				if material_waterfall:
+					var head_norm := float(_wf_head) / float(max(1, waterfall_rows))
+					material_waterfall.set_shader_parameter("head_norm", head_norm)
+			Mode.AURORA, Mode.UNIVERSE, Mode.UNIVERSE_ALT:
+				mat.set_shader_parameter("kick_in", clamp(kick_sm, 0.0, 1.0))
+				mat.set_shader_parameter("kick_env", clamp(_kick_env, 0.0, 1.0))
+				mat.set_shader_parameter("ring_age", clamp(_ring_age, 0.0, 1.0))
+			Mode.BASIC_AUDIO:
+				if material_basic_audio_shader:
+					var head_norm2 := float(_wf_head) / float(max(1, waterfall_rows))
+					material_basic_audio_shader.set_shader_parameter("head_norm", head_norm2)
 
-				_set_uniform_if_present(mat, "aspect", _get_current_aspect())
-				_set_uniform_if_present(mat, "level_in", clamp(level_sm * level_boost, 0.0, 1.0))
-				_set_uniform_if_present(mat, "bass_in", clamp(bass_sm, 0.0, 1.0))
-				_set_uniform_if_present(mat, "treble_in", clamp(treb_sm, 0.0, 1.0))
-				_set_uniform_if_present(mat, "tone_in", clamp(tone_sm, 0.0, 1.0))
-				_set_uniform_if_present(mat, "kick_env", clamp(_kick_env, 0.0, 1.0))
-				_broadcast_audio_uniforms()
-				_debug_trace_audio_uniforms(effective_dt)
+		_set_uniform_if_present(mat, "aspect", _get_current_aspect())
+		_set_uniform_if_present(mat, "level_in", clamp(level_sm * level_boost, 0.0, 1.0))
+		_set_uniform_if_present(mat, "bass_in", clamp(bass_sm, 0.0, 1.0))
+		_set_uniform_if_present(mat, "treble_in", clamp(treb_sm, 0.0, 1.0))
+		_set_uniform_if_present(mat, "tone_in", clamp(tone_sm, 0.0, 1.0))
+		_set_uniform_if_present(mat, "kick_env", clamp(_kick_env, 0.0, 1.0))
+		_broadcast_audio_uniforms()
+		_debug_trace_audio_uniforms(effective_dt)
 
 	_update_aspect()
 	_update_track_overlay(overlay_time)
