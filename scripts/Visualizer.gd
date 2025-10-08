@@ -480,19 +480,11 @@ func set_playhead(t: float) -> void:
 						_offline_last_index = 0
 
 func load_features_csv(path: String) -> void:
-	_offline_features.clear()
-	_offline_last_index = 0
-	_offline_frame_map.clear()
-	_debug_missing_offline_logged = false
 	var resolved_path := _normalize_resource_path(path)
 	if resolved_path == "":
-		offline_features_path = ""
-		offline_features_path = ""
+		push_warning("Features CSV path was empty or invalid: %s" % path)
 		return
-	
-	offline_features_path = path
 
-	offline_features_path = resolved_path
 	var f := FileAccess.open(resolved_path, FileAccess.READ)
 	if f == null:
 		var global_path := ProjectSettings.globalize_path(resolved_path)
@@ -529,11 +521,12 @@ func load_features_csv(path: String) -> void:
 	band_columns.sort_custom(func(a, b):
 		return int(String(a).substr(1)) < int(String(b).substr(1)))
 
+	var features: Array = []
+	var frame_map := {}
 	var prev_time := -1.0
 	var dt_accum := 0.0
 	var dt_count := 0
 	var last_time := 0.0
-	var last_frame := 0
 	while !f.eof_reached():
 		var line := f.get_line()
 		if line.strip_edges() == "":
@@ -556,53 +549,55 @@ func load_features_csv(path: String) -> void:
 			else:
 				bands[bi] = 0.0
 
-			_offline_features.append({
-							"frame": frame_idx,
-							"t": t_val,
-							"level": clamp(level_val, 0.0, 1.0),
-							"kick": clamp(kick_val, 0.0, 1.0),
-							"bands": bands,
-			})
-			_offline_frame_map[frame_idx] = _offline_features.size() - 1
+		features.append({
+			"frame": frame_idx,
+			"t": t_val,
+			"level": clamp(level_val, 0.0, 1.0),
+			"kick": clamp(kick_val, 0.0, 1.0),
+			"bands": bands,
+		})
+		frame_map[frame_idx] = features.size() - 1
 
-			if prev_time >= 0.0:
-					var step = max(0.0, t_val - prev_time)
-					if step > 0.0:
-						dt_accum += step
-						dt_count += 1
+		if prev_time >= 0.0:
+			var step = max(0.0, t_val - prev_time)
+			if step > 0.0:
+				dt_accum += step
+				dt_count += 1
 		prev_time = t_val
 		last_time = t_val
-		last_frame = frame_idx
 
 	f.close()
 
-	#offline_features_path = path
-	print(_offline_features.size())
+	if features.is_empty():
+		push_warning("Features CSV contained no rows after parsing: %s" % resolved_path)
+		return
 
-	if dt_count > 0 and dt_accum > 0.0:
-			_offline_dt = dt_accum / float(dt_count)
-	elif _offline_features.size() > 1:
-			var first = _offline_features[0]
-			var second = _offline_features[1]
-			_offline_dt = max(1.0 / 60.0, float(second["t"]) - float(first["t"]))
-	else:
-			_offline_dt = 1.0 / 60.0
-
-	if _offline_dt <= 0.0:
-			_offline_dt = 1.0 / 60.0
-	_offline_fps = 1.0 / _offline_dt
+	_offline_features = features
+	_offline_frame_map = frame_map
+	_offline_last_index = 0
 	_offline_playhead = 0.0
 	_last_play_pos = 0.0
+	_debug_missing_offline_logged = false
+	offline_features_path = resolved_path
 
-	if _offline_features.size() > 0:
-		print("[Visualizer] Offline features loaded from %s (%d frames)" % [path, _offline_features.size()])
-		_offline_wave_duration = last_time
-		_debug_missing_offline_logged = false
+	if dt_count > 0 and dt_accum > 0.0:
+		_offline_dt = dt_accum / float(dt_count)
+	elif features.size() > 1:
+		var first = features[0]
+		var second = features[1]
+		_offline_dt = max(1.0 / 60.0, float(second["t"]) - float(first["t"]))
 	else:
-		_offline_wave_duration = 0.0
-		push_warning("Features CSV contained no rows after parsing: %s" % path)
+		_offline_dt = 1.0 / 60.0
+
+	if _offline_dt <= 0.0:
+		_offline_dt = 1.0 / 60.0
+	_offline_fps = 1.0 / _offline_dt
+	_offline_wave_duration = last_time
+
+	print("[Visualizer] Offline features loaded from %s (%d frames)" % [resolved_path, features.size()])
 
 	_ensure_offline_enabled()
+
 
 func load_waveform_binary(base_path: String) -> void:
 	if base_path == "":
