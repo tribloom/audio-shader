@@ -163,10 +163,25 @@ var _wf_head: int = 0
 # Debugging helpers
 @export_group("Debug")
 
-@export var debug_log_audio_uniforms: bool = false   # when true, prints audio uniform values sent to shaders
+# Enable this toggle from the Inspector (Visualizer > Debug) or via script to
+# stream the audio uniforms that are pushed into each shader. The values appear
+# in the Godot Output panel while running in the editor or in the terminal when
+# launched headless.
+@export var debug_log_audio_uniforms: bool = false:
+	set(value):
+		if field == value:
+			return
+		field = value
+		if value:
+			_print_audio_debug_hint()
+		else:
+			_debug_log_accum = 0.0
+	get:
+		return field
+# when true, prints audio uniform values sent to shaders
 @export var debug_log_interval: float = 1.0          # seconds between debug log samples
-
 var _debug_log_accum: float = 0.0
+var _debug_missing_offline_logged: bool = false
 
 @export_group("")
 
@@ -253,6 +268,9 @@ func _ready() -> void:
 	_build_overlay()
 	_parse_tracklist()
 	_update_overlay_visibility()
+
+	if debug_log_audio_uniforms:
+		_print_audio_debug_hint()
 
 
 
@@ -469,11 +487,12 @@ func set_playhead(t: float) -> void:
 						_offline_last_index = 0
 
 func load_features_csv(path: String) -> void:
-	_offline_features.clear()
-	_offline_last_index = 0
-	_offline_frame_map.clear()
-	if path == "":
-		return
+        _offline_features.clear()
+        _offline_last_index = 0
+        _offline_frame_map.clear()
+        _debug_missing_offline_logged = false
+        if path == "":
+                return
 
 	var f := FileAccess.open(path, FileAccess.READ)
 	if f == null:
@@ -566,11 +585,12 @@ func load_features_csv(path: String) -> void:
 	_offline_playhead = 0.0
 	_last_play_pos = 0.0
 
-	if _offline_features.size() > 0:
-			print("[Visualizer] Offline features loaded from %s (%d frames)" % [path, _offline_features.size()])
-			_offline_wave_duration = last_time
-	else:
-			_offline_wave_duration = 0.0
+        if _offline_features.size() > 0:
+                        print("[Visualizer] Offline features loaded from %s (%d frames)" % [path, _offline_features.size()])
+                        _offline_wave_duration = last_time
+                        _debug_missing_offline_logged = false
+        else:
+                        _offline_wave_duration = 0.0
 
 	_ensure_offline_enabled()
 
@@ -835,15 +855,16 @@ func _process(dt: float) -> void:
 	_update_track_overlay(overlay_time)
 
 func _process_offline() -> void:
-		var overlay_time := _offline_playhead
+                var overlay_time := _offline_playhead
 
-		if color_rect == null:
-				_update_track_overlay(overlay_time)
-				return
+                if color_rect == null:
+                                _update_track_overlay(overlay_time)
+                                return
 
-		if _offline_features.is_empty():
-				_update_track_overlay(overlay_time)
-				return
+                if _offline_features.is_empty():
+                                _debug_note_missing_offline_data()
+                                _update_track_overlay(overlay_time)
+                                return
 
 		var sample := _sample_offline_features(_offline_playhead)
 		if sample.is_empty():
