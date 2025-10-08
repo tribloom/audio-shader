@@ -167,21 +167,11 @@ var _wf_head: int = 0
 # stream the audio uniforms that are pushed into each shader. The values appear
 # in the Godot Output panel while running in the editor or in the terminal when
 # launched headless.
-@export var debug_log_audio_uniforms: bool = false:
-	set(value):
-		if field == value:
-			return
-		field = value
-		if value:
-			_print_audio_debug_hint()
-		else:
-			_debug_log_accum = 0.0
-	get:
-		return field
+@export var debug_log_audio_uniforms: bool = true
 # when true, prints audio uniform values sent to shaders
 @export var debug_log_interval: float = 1.0          # seconds between debug log samples
 var _debug_log_accum: float = 0.0
-var _debug_missing_offline_logged: bool = false
+var _debug_missing_offline_logged: bool = true
 
 @export_group("")
 
@@ -487,12 +477,12 @@ func set_playhead(t: float) -> void:
 						_offline_last_index = 0
 
 func load_features_csv(path: String) -> void:
-        _offline_features.clear()
-        _offline_last_index = 0
-        _offline_frame_map.clear()
-        _debug_missing_offline_logged = false
-        if path == "":
-                return
+	_offline_features.clear()
+	_offline_last_index = 0
+	_offline_frame_map.clear()
+	_debug_missing_offline_logged = false
+	if path == "":
+		return
 
 	var f := FileAccess.open(path, FileAccess.READ)
 	if f == null:
@@ -585,65 +575,65 @@ func load_features_csv(path: String) -> void:
 	_offline_playhead = 0.0
 	_last_play_pos = 0.0
 
-        if _offline_features.size() > 0:
-                        print("[Visualizer] Offline features loaded from %s (%d frames)" % [path, _offline_features.size()])
-                        _offline_wave_duration = last_time
-                        _debug_missing_offline_logged = false
-        else:
-                        _offline_wave_duration = 0.0
+	if _offline_features.size() > 0:
+		print("[Visualizer] Offline features loaded from %s (%d frames)" % [path, _offline_features.size()])
+		_offline_wave_duration = last_time
+		_debug_missing_offline_logged = false
+	else:
+		_offline_wave_duration = 0.0
 
 	_ensure_offline_enabled()
 
 func load_waveform_binary(base_path: String) -> void:
-		if base_path == "":
-				return
-		var bin_path := base_path + ".f32"
-		var json_path := base_path + ".json"
-		if !FileAccess.file_exists(bin_path) or !FileAccess.file_exists(json_path):
-						push_warning("Waveform files not found for base '%s'" % base_path)
-						return
+	if base_path == "":
+		return
+	var bin_path := base_path + ".f32"
+	var json_path := base_path + ".json"
+	if !FileAccess.file_exists(bin_path) or !FileAccess.file_exists(json_path):
+		push_warning("Waveform files not found for base '%s'" % base_path)
+		return
 
-		var meta_file := FileAccess.open(json_path, FileAccess.READ)
-		if meta_file == null:
-				push_warning("Failed to open waveform meta: %s" % json_path)
-				return
-		var meta_text := meta_file.get_as_text()
-		meta_file.close()
-		var meta = JSON.parse_string(meta_text)
-		if typeof(meta) != TYPE_DICTIONARY:
-				push_warning("Invalid waveform metadata JSON: %s" % json_path)
-				return
-		_offline_wave_rate = float(meta.get("sample_rate", 0.0))
-		var expected_len := int(meta.get("length", 0))
+	var meta_file := FileAccess.open(json_path, FileAccess.READ)
+	if meta_file == null:
+		push_warning("Failed to open waveform meta: %s" % json_path)
+		return
+	var meta_text := meta_file.get_as_text()
+	meta_file.close()
+	var meta = JSON.parse_string(meta_text)
+	if typeof(meta) != TYPE_DICTIONARY:
+		push_warning("Invalid waveform metadata JSON: %s" % json_path)
+		return
+	_offline_wave_rate = float(meta.get("sample_rate", 0.0))
+	var expected_len := int(meta.get("length", 0))
 
-		var bin_file := FileAccess.open(bin_path, FileAccess.READ)
-		if bin_file == null:
-				push_warning("Failed to open waveform binary: %s" % bin_path)
-				return
-		bin_file.big_endian = false
-		var samples := PackedFloat32Array()
-		if expected_len > 0:
-				samples.resize(expected_len)
-				for i in range(expected_len):
-						if bin_file.eof_reached():
-								samples[i] = 0.0
-						else:
-								samples[i] = bin_file.get_float()
-		else:
-				while !bin_file.eof_reached():
-						samples.append(bin_file.get_float())
-		bin_file.close()
+	var bin_file := FileAccess.open(bin_path, FileAccess.READ)
+	if bin_file == null:
+		push_warning("Failed to open waveform binary: %s" % bin_path)
+		return
+	bin_file.big_endian = false
+	var samples := PackedFloat32Array()
+	if expected_len > 0:
+		samples.resize(expected_len)
+		for i in range(expected_len):
+			if bin_file.eof_reached():
+				samples[i] = 0.0
+			else:
+				samples[i] = bin_file.get_float()
+	else:
+		while !bin_file.eof_reached():
+			samples.append(bin_file.get_float())
+	bin_file.close()
 
-		offline_waveform_base = base_path
-		_offline_wave_samples = samples
-		if samples.size() > 0:
-			print("[Visualizer] Offline waveform loaded from %s (%d samples)" % [base_path, samples.size()])
-		if _offline_wave_rate > 0.0 and samples.size() > 0:
-				_offline_wave_duration = float(samples.size()) / _offline_wave_rate
-		elif _offline_features.size() > 0:
-				_offline_wave_duration = float(_offline_features.back().get("t", 0.0))
-		else:
-				_offline_wave_duration = 0.0
+	offline_waveform_base = base_path
+	_offline_wave_samples = samples
+	if samples.size() > 0:
+		print("[Visualizer] Offline waveform loaded from %s (%d samples)" % [base_path, samples.size()])
+	if _offline_wave_rate > 0.0 and samples.size() > 0:
+			_offline_wave_duration = float(samples.size()) / _offline_wave_rate
+	elif _offline_features.size() > 0:
+			_offline_wave_duration = float(_offline_features.back().get("t", 0.0))
+	else:
+		_offline_wave_duration = 0.0
 
 	_ensure_offline_enabled()
 
@@ -658,7 +648,7 @@ func _detect_runtime_environment() -> void:
 	var main_loop := Engine.get_main_loop()
 	if main_loop != null:
 		var identified := false
-		var loop_script := main_loop.get_script()
+		var loop_script = main_loop.get_script()
 		if loop_script is Script:
 			var script_path := (loop_script as Script).resource_path
 			if script_path != "" and script_path.ends_with("scripts/ExportRenderer.gd"):
@@ -855,16 +845,16 @@ func _process(dt: float) -> void:
 	_update_track_overlay(overlay_time)
 
 func _process_offline() -> void:
-                var overlay_time := _offline_playhead
+	var overlay_time := _offline_playhead
 
-                if color_rect == null:
-                                _update_track_overlay(overlay_time)
-                                return
+	if color_rect == null:
+		_update_track_overlay(overlay_time)
+		return
 
-                if _offline_features.is_empty():
-                                _debug_note_missing_offline_data()
-                                _update_track_overlay(overlay_time)
-                                return
+	if _offline_features.is_empty():
+		_debug_note_missing_offline_data()
+		_update_track_overlay(overlay_time)
+		return
 
 		var sample := _sample_offline_features(_offline_playhead)
 		if sample.is_empty():
@@ -1033,13 +1023,13 @@ func _set_uniform_if_present(m: ShaderMaterial, name: String, v) -> void:
 		m.set_shader_parameter(name, v)
 
 func _broadcast_audio_uniforms() -> void:
-	var level_val := clamp(level_sm * level_boost, 0.0, 1.0)
-	var bass_val := clamp(bass_sm, 0.0, 1.0)
-	var treb_val := clamp(treb_sm, 0.0, 1.0)
-	var tone_val := clamp(tone_sm, 0.0, 1.0)
-	var kick_val := clamp(kick_sm * kick_boost, 0.0, 1.0)
-	var kick_in_val := clamp(kick_sm, 0.0, 1.0)
-	var kick_env_val := clamp(_kick_env, 0.0, 1.0)
+	var level_val = clamp(level_sm * level_boost, 0.0, 1.0)
+	var bass_val = clamp(bass_sm, 0.0, 1.0)
+	var treb_val = clamp(treb_sm, 0.0, 1.0)
+	var tone_val = clamp(tone_sm, 0.0, 1.0)
+	var kick_val = clamp(kick_sm * kick_boost, 0.0, 1.0)
+	var kick_in_val = clamp(kick_sm, 0.0, 1.0)
+	var kick_env_val = clamp(_kick_env, 0.0, 1.0)
 
 	var mats := [
 		material_chromatic,
@@ -1096,20 +1086,20 @@ func _debug_trace_audio_uniforms(dt: float) -> void:
 		_debug_log_accum = 0.0
 		return
 
-	var interval := max(0.1, debug_log_interval)
+	var interval = max(0.1, debug_log_interval)
 	_debug_log_accum += dt
 	if _debug_log_accum < interval:
 
 		return
 	_debug_log_accum = 0.0
 
-	var level_val := clamp(level_sm * level_boost, 0.0, 1.0)
-	var bass_val := clamp(bass_sm, 0.0, 1.0)
-	var treb_val := clamp(treb_sm, 0.0, 1.0)
-	var tone_val := clamp(tone_sm, 0.0, 1.0)
-	var kick_val := clamp(kick_sm * kick_boost, 0.0, 1.0)
-	var kick_in_val := clamp(kick_sm, 0.0, 1.0)
-	var kick_env_val := clamp(_kick_env, 0.0, 1.0)
+	var level_val = clamp(level_sm * level_boost, 0.0, 1.0)
+	var bass_val = clamp(bass_sm, 0.0, 1.0)
+	var treb_val = clamp(treb_sm, 0.0, 1.0)
+	var tone_val = clamp(tone_sm, 0.0, 1.0)
+	var kick_val = clamp(kick_sm * kick_boost, 0.0, 1.0)
+	var kick_in_val = clamp(kick_sm, 0.0, 1.0)
+	var kick_env_val = clamp(_kick_env, 0.0, 1.0)
 
 	print("[Visualizer] Audio uniforms -> level=%.3f bass=%.3f treble=%.3f tone=%.3f kick=%.3f kick_in=%.3f env=%.3f" % [
 		level_val,
@@ -1182,7 +1172,34 @@ func _debug_trace_audio_uniforms(dt: float) -> void:
 			print("    %s -> <no tracked uniforms>" % shader_label)
 		else:
 			print("    %s -> %s" % [shader_label, ", ".join(sampled)])
+func _print_audio_debug_hint() -> void:
+		print("[Visualizer] Audio uniform debug logging enabled. Values print to the Output panel/terminal.")
+		print("              Adjust the Debug/Log Interval export to change how often updates appear (currently %.2fs)." % debug_log_interval)
 
+
+func _debug_note_missing_offline_data() -> void:
+		if !debug_log_audio_uniforms:
+				return
+		if _debug_missing_offline_logged:
+				return
+		_debug_missing_offline_logged = true
+
+		var context := []
+		if offline_features_path != "":
+				context.append("offline_features_path=%s" % offline_features_path)
+		if !_headless_runtime and !_export_renderer_runtime:
+				context.append("offline mode active")
+		if _headless_runtime:
+				context.append("headless runtime")
+		if _export_renderer_runtime:
+				context.append("ExportRenderer runtime")
+
+		var ctx_str := ""
+		if !context.is_empty():
+				ctx_str = " (%s)" % ", ".join(context)
+
+		print("[Visualizer] (debug) Offline audio features not loaded; shader uniforms will remain at defaults%s." % ctx_str)
+		print("              Provide a features CSV via the Debug/Offline exports or disable headless/offline mode to stream live audio.")
 
 func _append_debug_material(into: Array[ShaderMaterial], mat: ShaderMaterial) -> void:
 	if mat == null:
@@ -1205,8 +1222,8 @@ func _describe_shader_for_debug(mat: ShaderMaterial) -> String:
 
 
 func _apply_static_shader_inputs(m: ShaderMaterial) -> void:
-        if m == null:
-                return
+	if m == null:
+		return
 	_set_uniform_if_present(m, "spectrum_tex", _spec_tex)
 	_set_uniform_if_present(m, "waterfall_tex", _wf_tex)
 	_set_uniform_if_present(m, "bar_count", spectrum_bar_count)
