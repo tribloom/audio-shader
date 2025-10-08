@@ -162,8 +162,10 @@ var _wf_head: int = 0
 
 # Debugging helpers
 @export_group("Debug")
+
 @export var debug_log_audio_uniforms: bool = false   # when true, prints audio uniform values sent to shaders
 @export var debug_log_interval: float = 1.0          # seconds between debug log samples
+
 var _debug_log_accum: float = 0.0
 
 @export_group("")
@@ -1076,6 +1078,7 @@ func _debug_trace_audio_uniforms(dt: float) -> void:
 	var interval := max(0.1, debug_log_interval)
 	_debug_log_accum += dt
 	if _debug_log_accum < interval:
+
 		return
 	_debug_log_accum = 0.0
 
@@ -1178,6 +1181,7 @@ func _describe_shader_for_debug(mat: ShaderMaterial) -> String:
 	if shader_name == "":
 		shader_name = "<unnamed shader>"
 	return shader_name
+
 
 func _apply_static_shader_inputs(m: ShaderMaterial) -> void:
         if m == null:
