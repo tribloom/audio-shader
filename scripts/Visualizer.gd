@@ -160,6 +160,14 @@ var _wf_img: Image
 var _wf_tex: ImageTexture
 var _wf_head: int = 0
 
+# Debugging helpers
+@export_group("Debug")
+@export var debug_log_audio_uniforms: bool = false
+@export var debug_log_interval: float = 1.0
+var _debug_log_accum: float = 0.0
+
+@export_group("")
+
 # Onset envelope + ring (used by AURORA/UNIVERSE variants)
 @export var kick_thresh_on: float  = 0.55
 @export var kick_min_interval: float = 0.12
@@ -818,6 +826,7 @@ func _process(dt: float) -> void:
 		_set_uniform_if_present(m, "tone_in", clamp(tone_sm, 0.0, 1.0))
 		_set_uniform_if_present(m, "kick_env", clamp(_kick_env, 0.0, 1.0))  # for “center flash” beats
 		_broadcast_audio_uniforms()
+		_debug_trace_audio_uniforms(dt)
 
 	_update_aspect()
 
@@ -896,9 +905,10 @@ func _process_offline() -> void:
 				_set_uniform_if_present(mat, "tone_in", clamp(tone_sm, 0.0, 1.0))
 				_set_uniform_if_present(mat, "kick_env", clamp(_kick_env, 0.0, 1.0))
 				_broadcast_audio_uniforms()
+				_debug_trace_audio_uniforms(effective_dt)
 
-		_update_aspect()
-		_update_track_overlay(overlay_time)
+	_update_aspect()
+	_update_track_overlay(overlay_time)
 
 func _sample_offline_features(t: float) -> Dictionary:
 	if _offline_features.is_empty():
@@ -1058,9 +1068,76 @@ func _apply_audio_uniforms_to_material(
 	_set_uniform_if_present(m, "kick_env", kick_env_val)
 
 
-func _apply_static_shader_inputs(m: ShaderMaterial) -> void:
-	if m == null:
+func _debug_trace_audio_uniforms(dt: float) -> void:
+	if !debug_log_audio_uniforms:
+		_debug_log_accum = 0.0
 		return
+
+	var interval := max(0.1, debug_log_interval)
+	_debug_log_accum += dt
+	if _debug_log_accum < interval:
+		return
+	_debug_log_accum = 0.0
+
+	var level_val := clamp(level_sm * level_boost, 0.0, 1.0)
+	var bass_val := clamp(bass_sm, 0.0, 1.0)
+	var treb_val := clamp(treb_sm, 0.0, 1.0)
+	var tone_val := clamp(tone_sm, 0.0, 1.0)
+	var kick_val := clamp(kick_sm * kick_boost, 0.0, 1.0)
+	var kick_in_val := clamp(kick_sm, 0.0, 1.0)
+	var kick_env_val := clamp(_kick_env, 0.0, 1.0)
+
+	var mat := color_rect.material as ShaderMaterial
+	var shader_name := "<no material>"
+	if mat and mat.shader:
+		shader_name = mat.shader.resource_path
+		if shader_name == "":
+			shader_name = mat.shader.resource_name
+		if shader_name == "":
+			shader_name = "<unnamed shader>"
+
+	print("[Visualizer] Audio uniforms -> level=%.3f bass=%.3f treble=%.3f tone=%.3f kick=%.3f kick_in=%.3f env=%.3f shader=%s" % [
+		level_val,
+		bass_val,
+		treb_val,
+		tone_val,
+		kick_val,
+		kick_in_val,
+		kick_env_val,
+		shader_name,
+	])
+
+	if mat:
+		var sampled: PackedStringArray = []
+		for uniform_name in [
+			"level",
+			"level_in",
+			"audio_level",
+			"bass",
+			"bass_in",
+			"audio_bass",
+			"treble",
+			"treble_in",
+			"audio_treble",
+			"tone",
+			"tone_in",
+			"kick",
+			"kick_in",
+			"kick_env",
+		]:
+			if _shader_has_uniform(mat, uniform_name):
+				var value = mat.get_shader_parameter(uniform_name)
+				if value is float:
+					sampled.append("%s=%.3f" % [uniform_name, float(value)])
+				else:
+					sampled.append("%s=%s" % [uniform_name, str(value)])
+		if !sampled.is_empty():
+			print("[Visualizer] Shader parameters (%s): %s" % [shader_name, ", ".join(sampled)])
+
+
+func _apply_static_shader_inputs(m: ShaderMaterial) -> void:
+        if m == null:
+                return
 	_set_uniform_if_present(m, "spectrum_tex", _spec_tex)
 	_set_uniform_if_present(m, "waterfall_tex", _wf_tex)
 	_set_uniform_if_present(m, "bar_count", spectrum_bar_count)
