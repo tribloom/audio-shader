@@ -171,7 +171,10 @@ var _wf_head: int = 0
 # when true, prints audio uniform values sent to shaders
 @export var debug_log_interval: float = 1.0          # seconds between debug log samples
 var _debug_log_accum: float = 0.0
-var _debug_missing_offline_logged: bool = true
+var _debug_missing_offline_logged: bool = false
+
+# When true, logs the parsed tracklist entries after loading.
+@export var debug_log_tracklist: bool = true
 
 @export_group("")
 
@@ -481,19 +484,35 @@ func load_features_csv(path: String) -> void:
 	_offline_last_index = 0
 	_offline_frame_map.clear()
 	_debug_missing_offline_logged = false
-	if path == "":
+	var resolved_path := _normalize_resource_path(path)
+	if resolved_path == "":
+		offline_features_path = ""
+		offline_features_path = ""
 		return
+	
+	offline_features_path = path
 
-	var f := FileAccess.open(path, FileAccess.READ)
+	offline_features_path = resolved_path
+	var f := FileAccess.open(resolved_path, FileAccess.READ)
 	if f == null:
-		push_error("Failed to open features CSV: %s" % path)
+		var global_path := ProjectSettings.globalize_path(resolved_path)
+		if global_path != resolved_path:
+			f = FileAccess.open(global_path, FileAccess.READ)
+	if f == null:
+		push_error("Failed to open features CSV: %s" % resolved_path)
 		return
 
 	var header_line := f.get_line()
+	if header_line.length() > 0 and header_line.unicode_at(0) == 0xfeff:
+		header_line = header_line.substr(1)
 	var headers := header_line.split(",")
 	var col_index := {}
 	for i in range(headers.size()):
-		col_index[headers[i].strip_edges().to_lower()] = i
+		var header_name := headers[i].strip_edges()
+		if header_name.length() > 0 and header_name.unicode_at(0) == 0xfeff:
+			header_name = header_name.substr(1)
+			print(header_name)
+		col_index[header_name.to_lower()] = i
 
 	var required := ["frame", "t", "level", "kick"]
 	for key in required:
@@ -518,6 +537,7 @@ func load_features_csv(path: String) -> void:
 	var last_frame := 0
 	while !f.eof_reached():
 		var line := f.get_line()
+		#print(line)
 		if line.strip_edges() == "":
 			continue
 		var cells := line.split(",")
@@ -532,8 +552,10 @@ func load_features_csv(path: String) -> void:
 		bands.resize(band_columns.size())
 		for bi in range(band_columns.size()):
 			var cname = band_columns[bi]
+			print(cname)
 			if col_index.has(cname):
 				var raw := cells[col_index[cname]].strip_edges()
+				#print(raw)
 				bands[bi] = raw.to_float()
 			else:
 				bands[bi] = 0.0
@@ -545,6 +567,7 @@ func load_features_csv(path: String) -> void:
 								"kick": clamp(kick_val, 0.0, 1.0),
 								"bands": bands,
 				})
+				print(_offline_features)
 				_offline_frame_map[frame_idx] = _offline_features.size() - 1
 
 				if prev_time >= 0.0:
@@ -558,7 +581,7 @@ func load_features_csv(path: String) -> void:
 
 	f.close()
 
-	offline_features_path = path
+	#offline_features_path = path
 
 	if dt_count > 0 and dt_accum > 0.0:
 			_offline_dt = dt_accum / float(dt_count)
@@ -581,6 +604,7 @@ func load_features_csv(path: String) -> void:
 		_debug_missing_offline_logged = false
 	else:
 		_offline_wave_duration = 0.0
+		push_warning("Features CSV contained no rows after parsing: %s" % path)
 
 	_ensure_offline_enabled()
 
@@ -1568,6 +1592,8 @@ func _parse_tracklist() -> void:
 	_current_cue_idx = -1
 	_last_play_pos = 0.0
 	_resume_from_pos = 0.0
+	if debug_log_tracklist:
+		_log_tracklist_debug()
 	_update_track_overlay(_last_play_pos)
 
 func apply_tracklist_entry(entry: Dictionary) -> void:
@@ -1587,6 +1613,23 @@ func apply_tracklist_entry(entry: Dictionary) -> void:
 		_title_label.text = title
 	if _time_label:
 		_time_label.text = _format_clock(_last_play_pos)
+
+func _log_tracklist_debug() -> void:
+	if _cues.is_empty():
+		print("[Tracklist] No entries loaded.")
+		return
+	print("[Tracklist] Loaded %d entries:" % _cues.size())
+	for cue in _cues:
+		var t_val := float(cue.get("t", 0.0))
+		var title := String(cue.get("title", ""))
+		var shader_name := String(cue.get("shader", ""))
+		var params = cue.get("params", {})
+		var line := "  %s | %s" % [_format_clock(t_val), title]
+		if shader_name != "":
+			line += " | shader=%s" % shader_name
+		print(line)
+		if params is Dictionary and (params as Dictionary).size() > 0:
+			print("    params=%s" % JSON.stringify(params))
 
 func _parse_timestamp_to_seconds(ts: String) -> float:
 	# supports M:SS, MM:SS, H:MM:SS
