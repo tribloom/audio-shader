@@ -511,7 +511,6 @@ func load_features_csv(path: String) -> void:
 		var header_name := headers[i].strip_edges()
 		if header_name.length() > 0 and header_name.unicode_at(0) == 0xfeff:
 			header_name = header_name.substr(1)
-			print(header_name)
 		col_index[header_name.to_lower()] = i
 
 	var required := ["frame", "t", "level", "kick"]
@@ -537,7 +536,6 @@ func load_features_csv(path: String) -> void:
 	var last_frame := 0
 	while !f.eof_reached():
 		var line := f.get_line()
-		#print(line)
 		if line.strip_edges() == "":
 			continue
 		var cells := line.split(",")
@@ -552,25 +550,22 @@ func load_features_csv(path: String) -> void:
 		bands.resize(band_columns.size())
 		for bi in range(band_columns.size()):
 			var cname = band_columns[bi]
-			print(cname)
 			if col_index.has(cname):
 				var raw := cells[col_index[cname]].strip_edges()
-				#print(raw)
 				bands[bi] = raw.to_float()
 			else:
 				bands[bi] = 0.0
 
-				_offline_features.append({
-								"frame": frame_idx,
-								"t": t_val,
-								"level": clamp(level_val, 0.0, 1.0),
-								"kick": clamp(kick_val, 0.0, 1.0),
-								"bands": bands,
-				})
-				print(_offline_features)
-				_offline_frame_map[frame_idx] = _offline_features.size() - 1
+			_offline_features.append({
+							"frame": frame_idx,
+							"t": t_val,
+							"level": clamp(level_val, 0.0, 1.0),
+							"kick": clamp(kick_val, 0.0, 1.0),
+							"bands": bands,
+			})
+			_offline_frame_map[frame_idx] = _offline_features.size() - 1
 
-				if prev_time >= 0.0:
+			if prev_time >= 0.0:
 					var step = max(0.0, t_val - prev_time)
 					if step > 0.0:
 						dt_accum += step
@@ -582,6 +577,7 @@ func load_features_csv(path: String) -> void:
 	f.close()
 
 	#offline_features_path = path
+	print(_offline_features.size())
 
 	if dt_count > 0 and dt_accum > 0.0:
 			_offline_dt = dt_accum / float(dt_count)
