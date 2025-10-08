@@ -162,6 +162,7 @@ var _wf_head: int = 0
 
 # Debugging helpers
 @export_group("Debug")
+
 # Enable this toggle from the Inspector (Visualizer > Debug) or via script to
 # stream the audio uniforms that are pushed into each shader. The values appear
 # in the Godot Output panel while running in the editor or in the terminal when
@@ -1091,13 +1092,14 @@ func _apply_audio_uniforms_to_material(
 
 
 func _debug_trace_audio_uniforms(dt: float) -> void:
-        if !debug_log_audio_uniforms:
-                _debug_log_accum = 0.0
-                return
+	if !debug_log_audio_uniforms:
+		_debug_log_accum = 0.0
+		return
 
 	var interval := max(0.1, debug_log_interval)
 	_debug_log_accum += dt
 	if _debug_log_accum < interval:
+
 		return
 	_debug_log_accum = 0.0
 
@@ -1162,11 +1164,11 @@ func _debug_trace_audio_uniforms(dt: float) -> void:
 		"kick_env",
 	]
 
-        for mat in tracked_mats:
-                var shader_label := _describe_shader_for_debug(mat)
-                if mat == null:
-                        print("    %s -> <null material>" % shader_label)
-                        continue
+	for mat in tracked_mats:
+		var shader_label := _describe_shader_for_debug(mat)
+		if mat == null:
+			print("    %s -> <null material>" % shader_label)
+			continue
 
 		var sampled: PackedStringArray = []
 		for uniform_name in uniform_names:
@@ -1179,37 +1181,7 @@ func _debug_trace_audio_uniforms(dt: float) -> void:
 		if sampled.is_empty():
 			print("    %s -> <no tracked uniforms>" % shader_label)
 		else:
-                        print("    %s -> %s" % [shader_label, ", ".join(sampled)])
-
-
-func _print_audio_debug_hint() -> void:
-        print("[Visualizer] Audio uniform debug logging enabled. Values print to the Output panel/terminal.")
-        print("              Adjust the Debug/Log Interval export to change how often updates appear (currently %.2fs)." % debug_log_interval)
-
-
-func _debug_note_missing_offline_data() -> void:
-        if !debug_log_audio_uniforms:
-                return
-        if _debug_missing_offline_logged:
-                return
-        _debug_missing_offline_logged = true
-
-        var context := []
-        if offline_features_path != "":
-                context.append("offline_features_path=%s" % offline_features_path)
-        if !_headless_runtime and !_export_renderer_runtime:
-                context.append("offline mode active")
-        if _headless_runtime:
-                context.append("headless runtime")
-        if _export_renderer_runtime:
-                context.append("ExportRenderer runtime")
-
-        var ctx_str := ""
-        if !context.is_empty():
-                ctx_str = " (%s)" % ", ".join(context)
-
-        print("[Visualizer] (debug) Offline audio features not loaded; shader uniforms will remain at defaults%s." % ctx_str)
-        print("              Provide a features CSV via the Debug/Offline exports or disable headless/offline mode to stream live audio.")
+			print("    %s -> %s" % [shader_label, ", ".join(sampled)])
 
 
 func _append_debug_material(into: Array[ShaderMaterial], mat: ShaderMaterial) -> void:
@@ -1230,6 +1202,7 @@ func _describe_shader_for_debug(mat: ShaderMaterial) -> String:
 	if shader_name == "":
 		shader_name = "<unnamed shader>"
 	return shader_name
+
 
 func _apply_static_shader_inputs(m: ShaderMaterial) -> void:
         if m == null:
