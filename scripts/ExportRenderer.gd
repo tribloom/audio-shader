@@ -20,6 +20,7 @@ var jpg_quality: float = 0.9
 var duration_s: float = 0.0
 var waveform_base: String = ""
 var frame_post_draw_supported: bool = true
+var overlay_enabled: bool = true
 
 # Tracklist overrides for headless mode
 var tracklist_path: String = ""
@@ -77,6 +78,7 @@ func _initialize() -> void:
 	var scene_path: String = args.get("scene", "scenes/AudioViz.tscn")
 	root_node = load(scene_path).instantiate()
 	_apply_tracklist_properties(root_node)
+	_apply_overlay_preference(root_node)
 
 	# Force offline mode before the node enters the scene tree so _ready() picks it up.
 	if root_node.has_method("set_offline_mode"):
@@ -103,6 +105,7 @@ func _initialize() -> void:
 		root_node.call("set_offline_mode", true)
 	if root_node.has_method("set_frame_post_draw_supported"):
 		root_node.call("set_frame_post_draw_supported", frame_post_draw_supported)
+	_apply_overlay_preference(root_node)
 	_apply_selected_track_entry()
 
 	# Apply settings that depend on the node being ready.
@@ -361,6 +364,18 @@ func _parse_args() -> void:
 				if track_val != "":
 					track_index = max(1, int(track_val))
 					track_index_specified = true
+			"--overlay":
+				var overlay_val := _sanitize_cli_path(value)
+				if overlay_val == "":
+					overlay_enabled = true
+				else:
+					var normalized := overlay_val.to_lower()
+					if normalized in ["1", "true", "yes", "on"]:
+						overlay_enabled = true
+					elif normalized in ["0", "false", "no", "off"]:
+						overlay_enabled = false
+			"--no-overlay":
+				overlay_enabled = false
 		i += 1
 	if waveform_base != "":
 		args.waveform = waveform_base
@@ -449,6 +464,7 @@ func _log_parsed_configuration(raw: PackedStringArray) -> void:
 		["jpg_quality", jpg_quality],
 		["out_dir", out_dir],
 		["out_dir_fs", out_dir_fs],
+		["overlay_enabled", overlay_enabled],
 		["tracklist_path", tracklist_path],
 		["track_index", track_index],
 		["track_index_specified", track_index_specified],
@@ -662,6 +678,12 @@ func _apply_tracklist_properties(node: Node) -> void:
 	elif tracklist_path != "":
 		if has_path:
 			node.set("tracklist_path", tracklist_path)
+
+func _apply_overlay_preference(node: Node) -> void:
+	if node == null:
+		return
+	if _has_property(node, "overlay_enabled"):
+		node.set("overlay_enabled", overlay_enabled)
 
 func _apply_selected_track_entry() -> void:
 	if selected_track_entry.is_empty() or root_node == null:
