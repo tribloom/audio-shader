@@ -481,6 +481,8 @@ func set_playhead(t: float) -> void:
 						_offline_last_index = 0
 
 
+
+
 func load_features_csv(path: String, start_time: float = 0.0, end_time: float = -1.0) -> void:
 	var resolved_path := _normalize_resource_path(path)
 	if resolved_path == "":
@@ -592,10 +594,6 @@ func load_features_csv(path: String, start_time: float = 0.0, end_time: float = 
 
 	f.close()
 
-	if features.is_empty():
-		push_warning("Features CSV contained no rows after parsing: %s" % resolved_path)
-		return
-
 	_offline_features = features
 	_offline_frame_map = frame_map
 	_offline_last_index = 0
@@ -625,6 +623,7 @@ func load_features_csv(path: String, start_time: float = 0.0, end_time: float = 
 		print("[Visualizer] Offline features loaded from %s (%d frames)" % [resolved_path, features.size()])
 
 	_ensure_offline_enabled()
+
 
 func load_waveform_binary(base_path: String, start_time: float = 0.0, end_time: float = -1.0) -> void:
 	if base_path == "":
@@ -662,7 +661,7 @@ func load_waveform_binary(base_path: String, start_time: float = 0.0, end_time: 
 			else:
 				samples[i] = bin_file.get_float()
 	else:
-		while !bin_file.eof_reached():
+		while not bin_file.eof_reached():
 			samples.append(bin_file.get_float())
 	bin_file.close()
 
@@ -704,6 +703,7 @@ func load_waveform_binary(base_path: String, start_time: float = 0.0, end_time: 
 		_offline_wave_duration = 0.0
 
 	_ensure_offline_enabled()
+
 
 func _detect_runtime_environment() -> void:
 	var display_name := DisplayServer.get_name()
@@ -1604,6 +1604,8 @@ func _parse_tracklist() -> void:
 		var title := rest
 		var shader_name := ""
 		var params := {}
+		var duration_hint := -1.0
+		var explicit_end := -1.0
 
 		# Look for directives after '|'
 		if rest.find("|") >= 0:
@@ -1620,19 +1622,40 @@ func _parse_tracklist() -> void:
 						params = obj
 					else:
 						push_warning("Bad JSON in set=: %s" % json_txt)
+				elif seg.begins_with("duration="):
+					duration_hint = _parse_duration_to_seconds(seg.substr("duration=".length()).strip_edges())
+				elif seg.begins_with("end="):
+					explicit_end = _parse_duration_to_seconds(seg.substr("end=".length()).strip_edges())
 
 		var sec := _parse_timestamp_to_seconds(ts)
 		if sec < 0.0:
 			continue
 
-		_cues.append({
+		var cue := {
 			"t": sec,
 			"title": title,
 			"shader": shader_name,
-			"params": params
-		})
+			"params": params,
+			"duration_hint": duration_hint,
+			"explicit_end": explicit_end,
+		}
+		_cues.append(cue)
 
 	_cues.sort_custom(func(a, b): return a["t"] < b["t"])
+	for i in range(_cues.size()):
+		var current: Dictionary = _cues[i]
+		var sec := float(current.get("t", -1.0))
+		if sec < 0.0:
+			continue
+		var next_sec := float(current.get("explicit_end", -1.0))
+		var dur_hint := float(current.get("duration_hint", -1.0))
+		if next_sec <= sec and dur_hint > 0.0:
+			next_sec = sec + dur_hint
+		if next_sec <= sec and i + 1 < _cues.size():
+			next_sec = float(_cues[i + 1].get("t", -1.0))
+		current["next_seconds"] = next_sec
+		_cues[i] = current
+
 	_current_cue_idx = -1
 	_last_play_pos = 0.0
 	_resume_from_pos = 0.0
@@ -1661,11 +1684,11 @@ func _open_tracklist_source(raw_path: String) -> FileAccess:
 			candidates.append(global_res)
 	var seen := {}
 	for candidate in candidates:
-		var path := candidate.strip_edges()
-		if path == "" or seen.has(path):
+		var path_opt := candidate.strip_edges()
+		if path_opt == "" or seen.has(path_opt):
 			continue
-		seen[path] = true
-		var f := FileAccess.open(path, FileAccess.READ)
+		seen[path_opt] = true
+		var f := FileAccess.open(path_opt, FileAccess.READ)
 		if f != null:
 			return f
 	return null
@@ -1727,6 +1750,17 @@ func _parse_timestamp_to_seconds(ts: String) -> float:
 	if m < 0 or s < 0 or s >= 60:
 		return -1.0
 	return float(h * 3600 + m * 60 + s)
+
+func _parse_duration_to_seconds(text: String) -> float:
+	if text == "":
+		return -1.0
+	if text.find(":") >= 0:
+		return _parse_timestamp_to_seconds(text)
+	var val := text.to_float()
+	if val < 0.0:
+		return -1.0
+	return val
+
 
 func _format_clock(sec: float) -> String:
 	if sec < 0.0:

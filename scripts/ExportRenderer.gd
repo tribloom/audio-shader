@@ -78,7 +78,7 @@ func _initialize() -> void:
 	root_node = load(scene_path).instantiate()
 	_apply_tracklist_properties(root_node)
 
-		# Force offline mode before the node enters the scene tree so _ready() picks it up.
+	# Force offline mode before the node enters the scene tree so _ready() picks it up.
 	if root_node.has_method("set_offline_mode"):
 		root_node.call("set_offline_mode", true)
 	if root_node.has_method("set_frame_post_draw_supported"):
@@ -125,7 +125,6 @@ func _initialize() -> void:
 		if offline_dur > 0.0:
 			duration_s = offline_dur
 			total_duration_s = offline_dur
-
 	if track_index_specified:
 		var relative_duration := -1.0
 		if offline_dur > 0.0:
@@ -135,7 +134,8 @@ func _initialize() -> void:
 		elif total_duration_s > 0.0:
 			relative_duration = total_duration_s
 
-	track_start_time = 0.0
+		track_start_time = 0.0
+		track_end_time = -1.0
 		if relative_duration > 0.0:
 			track_end_time = relative_duration
 		elif track_duration_hint > 0.0:
@@ -143,7 +143,7 @@ func _initialize() -> void:
 		elif total_duration_s > 0.0:
 			track_end_time = total_duration_s
 		else:
-	track_end_time = -1.0
+			track_end_time = -1.0
 
 		var stop_time := track_end_time
 		if stop_time <= track_start_time and relative_duration > 0.0:
@@ -166,6 +166,10 @@ func _initialize() -> void:
 		else:
 			duration_s = max(track_end_time - track_start_time, 0.0)
 		total_duration_s = duration_s
+	else:
+		track_start_time = 0.0
+		track_end_time = duration_s
+
 	DirAccess.make_dir_recursive_absolute(out_dir_fs)
 
 	# Deterministic frame loop
@@ -435,64 +439,64 @@ func _log_parsed_configuration(raw: PackedStringArray) -> void:
 			builder += raw[idx]
 		raw_line = builder
 	print("[ExportRenderer] Raw CLI args: %s" % raw_line)
-	var summary := [
-		["scene", args.get("scene", "scenes/AudioViz.tscn")],
-		["features", args.get("features", "")],
-		["waveform", args.get("waveform", "")],
-		["fps", fps],
-		["resolution", "%dx%d" % [width, height]],
-		["save_jpg", save_jpg],
-		["jpg_quality", jpg_quality],
-		["out_dir", out_dir],
-		["out_dir_fs", out_dir_fs],
-		["tracklist_path", tracklist_path],
-		["track_index", track_index],
-		["track_index_specified", track_index_specified],
-		["tracklist_inline_size", tracklist_inline.size()],
-		["track_start_time", track_start_time],
-		["track_end_time", track_end_time],
-		["track_source_start_time", track_source_start_time],
-		["track_source_end_time", track_source_end_time],
-		]
+var summary := [
+["scene", args.get("scene", "scenes/AudioViz.tscn")],
+["features", args.get("features", "")],
+["waveform", args.get("waveform", "")],
+["fps", fps],
+["resolution", "%dx%d" % [width, height]],
+["save_jpg", save_jpg],
+["jpg_quality", jpg_quality],
+["out_dir", out_dir],
+["out_dir_fs", out_dir_fs],
+["tracklist_path", tracklist_path],
+["track_index", track_index],
+["track_index_specified", track_index_specified],
+["tracklist_inline_size", tracklist_inline.size()],
+["track_start_time", track_start_time],
+["track_end_time", track_end_time],
+["track_source_start_time", track_source_start_time],
+["track_source_end_time", track_source_end_time],
+]
 	print("[ExportRenderer] Parsed configuration:")
 	for item in summary:
 		print("  %s: %s" % [item[0], item[1]])
 
 func _prepare_tracklist_override() -> void:
-	selected_track_entry = {}
-	tracklist_inline = PackedStringArray()
-	track_start_time = 0.0
-	track_end_time = -1.0
-	track_source_start_time = 0.0
-	track_source_end_time = -1.0
-	if tracklist_path == "":
-		return
+selected_track_entry = {}
+tracklist_inline = PackedStringArray()
+track_start_time = 0.0
+track_end_time = -1.0
+track_source_start_time = 0.0
+track_source_end_time = -1.0
+if tracklist_path == "":
+return
 
-	var lines := _read_tracklist_lines(tracklist_path)
-	if lines.is_empty():
-			push_warning("Tracklist not found: %s" % tracklist_path)
-			return
+var lines := _read_tracklist_lines(tracklist_path)
+if lines.is_empty():
+push_warning("Tracklist not found: %s" % tracklist_path)
+return
 
-	var entries := _parse_tracklist_entries(lines)
-	if entries.is_empty():
-			push_warning("Tracklist has no valid entries: %s" % tracklist_path)
-			return
+var entries := _parse_tracklist_entries(lines)
+if entries.is_empty():
+push_warning("Tracklist has no valid entries: %s" % tracklist_path)
+return
 
-	var idx = clamp(track_index - 1, 0, entries.size() - 1)
-	if track_index_specified and (idx != track_index - 1):
-			push_warning("Track index %d is out of range. Using entry %d." % [track_index, idx + 1])
-	selected_track_entry = entries[idx]
-	track_source_start_time = float(selected_track_entry.get("seconds", 0.0))
-	track_source_end_time = float(selected_track_entry.get("next_seconds", -1.0))
-	track_start_time = track_source_start_time
-	track_end_time = track_source_end_time
+var idx = clamp(track_index - 1, 0, entries.size() - 1)
+if track_index_specified and (idx != track_index - 1):
+push_warning("Track index %d is out of range. Using entry %d." % [track_index, idx + 1])
+selected_track_entry = entries[idx]
+track_source_start_time = float(selected_track_entry.get("seconds", 0.0))
+track_source_end_time = float(selected_track_entry.get("next_seconds", -1.0))
+track_start_time = track_source_start_time
+track_end_time = track_source_end_time
 
-	if track_index_specified:
-			var body := String(selected_track_entry.get("body", ""))
-			var line := "0:00 " + body
-			var inline := PackedStringArray()
-			inline.append(line)
-			tracklist_inline = inline
+if track_index_specified:
+var body := String(selected_track_entry.get("body", ""))
+var line := "0:00 " + body
+var inline := PackedStringArray()
+inline.append(line)
+tracklist_inline = inline
 
 func _read_tracklist_lines(path: String) -> PackedStringArray:
 	var lines := PackedStringArray()
@@ -518,76 +522,70 @@ func _read_tracklist_lines(path: String) -> PackedStringArray:
 func _parse_tracklist_entries(lines: PackedStringArray) -> Array:
 	var out: Array = []
 	for raw_line in lines:
-			var line := String(raw_line).strip_edges()
-			if line == "" or line.begins_with("#"):
+		var line := String(raw_line).strip_edges()
+		if line == "" or line.begins_with("#"):
+			continue
+		var space_idx := line.find(" ")
+		if space_idx < 0:
+			continue
+		var ts := line.substr(0, space_idx).strip_edges()
+		var body := line.substr(space_idx + 1).strip_edges()
+		if body == "":
+			continue
+		var title := body
+		var shader_name := ""
+		var params := {}
+		var duration_hint := -1.0
+		var explicit_end := -1.0
+		if body.find("|") >= 0:
+			var parts := body.split("|")
+			title = parts[0].strip_edges()
+			for i in range(1, parts.size()):
+				var seg := String(parts[i]).strip_edges()
+				if seg == "":
 					continue
-			var space_idx := line.find(" ")
-			if space_idx < 0:
-					continue
-			var ts := line.substr(0, space_idx).strip_edges()
-			var ts_seconds := _parse_timestamp_to_seconds(ts)
-			if ts_seconds < 0.0:
-					continue
-			var body := line.substr(space_idx + 1).strip_edges()
-			if body == "":
-					continue
-			var title := body
-			var shader_name := ""
-			var params := {}
-			var duration_hint := -1.0
-			var explicit_end := -1.0
-			if body.find("|") >= 0:
-					var parts := body.split("|")
-					title = parts[0].strip_edges()
-					for i in range(1, parts.size()):
-							var seg := String(parts[i]).strip_edges()
-							if seg == "":
-									continue
-							if seg.begins_with("shader="):
-									shader_name = seg.substr("shader=".length()).strip_edges()
-							elif seg.begins_with("set="):
-									var json_txt := seg.substr("set=".length()).strip_edges()
-									var parsed = JSON.parse_string(json_txt)
-									if typeof(parsed) == TYPE_DICTIONARY:
-											params = parsed
-									else:
-											push_warning("Invalid JSON in tracklist set= directive: %s" % json_txt)
-							elif seg.begins_with("duration="):
-									var dur_txt := seg.substr("duration=".length()).strip_edges()
-									var dur_val := _parse_duration_to_seconds(dur_txt)
-									if dur_val >= 0.0:
-											duration_hint = dur_val
-							elif seg.begins_with("end="):
-									var end_txt := seg.substr("end=".length()).strip_edges()
-									var end_val := _parse_timestamp_to_seconds(end_txt)
-									if end_val >= 0.0:
-											explicit_end = end_val
-			out.append({
-					"timestamp": ts,
-					"body": body,
-					"title": title,
-					"shader": shader_name,
-					"params": params,
-					"seconds": ts_seconds,
-					"duration_hint": duration_hint,
-					"explicit_end": explicit_end,
-			})
+				if seg.begins_with("shader="):
+					shader_name = seg.substr("shader=".length()).strip_edges()
+				elif seg.begins_with("set="):
+					var json_txt := seg.substr("set=".length()).strip_edges()
+					var parsed = JSON.parse_string(json_txt)
+					if typeof(parsed) == TYPE_DICTIONARY:
+						params = parsed
+					else:
+						push_warning("Invalid JSON in tracklist set= directive: %s" % json_txt)
+				elif seg.begins_with("duration="):
+					duration_hint = _parse_duration_to_seconds(seg.substr("duration=".length()).strip_edges())
+				elif seg.begins_with("end="):
+					explicit_end = _parse_duration_to_seconds(seg.substr("end=".length()).strip_edges())
+		var ts_seconds := _parse_timestamp_to_seconds(ts)
+		if ts_seconds < 0.0:
+			continue
+		out.append({
+			"timestamp": ts,
+			"body": body,
+			"title": title,
+			"shader": shader_name,
+			"params": params,
+			"seconds": ts_seconds,
+			"duration_hint": duration_hint,
+			"explicit_end": explicit_end,
+		})
 
 	for i in range(out.size()):
-			var current: Dictionary = out[i]
-			var sec := float(current.get("seconds", -1.0))
-			if sec < 0.0:
-					continue
-			var next_sec := float(current.get("explicit_end", -1.0))
-			var dur_hint := float(current.get("duration_hint", -1.0))
-			if next_sec <= sec and dur_hint > 0.0:
-					next_sec = sec + dur_hint
-			if next_sec <= sec and i + 1 < out.size():
-					var subsequent: Dictionary = out[i + 1]
-					var subsequent_sec := float(subsequent.get("seconds", -1.0))
-					if subsequent_sec >= 0.0:
-							next_sec = subsequent_sec
-			current["next_seconds"] = next_sec
+		var current: Dictionary = out[i]
+		var sec := float(current.get("seconds", -1.0))
+		if sec < 0.0:
+			continue
+		var next_sec := float(current.get("explicit_end", -1.0))
+		var dur_hint := float(current.get("duration_hint", -1.0))
+		if next_sec <= sec and dur_hint > 0.0:
+			next_sec = sec + dur_hint
+		if next_sec <= sec and i + 1 < out.size():
+			var subsequent: Dictionary = out[i + 1]
+			var subsequent_sec := float(subsequent.get("seconds", -1.0))
+			if subsequent_sec >= 0.0:
+				next_sec = subsequent_sec
+		current["next_seconds"] = next_sec
 	return out
 
 func _parse_timestamp_to_seconds(ts: String) -> float:
@@ -653,31 +651,38 @@ func _find_frame_index_for_time(target_time: float, frame_count: int) -> int:
 
 func _apply_tracklist_properties(node: Node) -> void:
 	if node == null:
-			return
+		return
 	var has_path := _has_property(node, "tracklist_path")
 	var has_lines := _has_property(node, "tracklist_lines")
 	if track_index_specified and tracklist_inline.size() > 0:
-			if has_path:
-					node.set("tracklist_path", "")
-			if has_lines:
-					node.set("tracklist_lines", tracklist_inline)
+		if has_path:
+			node.set("tracklist_path", "")
+		if has_lines:
+			node.set("tracklist_lines", tracklist_inline)
 	elif tracklist_path != "":
-			if has_path:
-					node.set("tracklist_path", tracklist_path)
+		if has_path:
+			node.set("tracklist_path", tracklist_path)
 
 func _apply_selected_track_entry() -> void:
 	if selected_track_entry.is_empty() or root_node == null:
-			return
+		return
 	if root_node.has_method("apply_tracklist_entry"):
-			root_node.call("apply_tracklist_entry", selected_track_entry)
-			return
+		root_node.call("apply_tracklist_entry", selected_track_entry)
+		return
 	var shader_name := String(selected_track_entry.get("shader", ""))
 	if shader_name != "" and root_node.has_method("set_shader_by_name"):
-			root_node.call("set_shader_by_name", shader_name)
+		root_node.call("set_shader_by_name", shader_name)
 	var params = selected_track_entry.get("params", {})
 	if params is Dictionary and (params as Dictionary).size() > 0 and root_node.has_method("_apply_shader_params"):
-			root_node.call("_apply_shader_params", params)
+		root_node.call("_apply_shader_params", params)
 
+func _has_property(obj: Object, prop: String) -> bool:
+	if obj == null:
+		return false
+	for item in obj.get_property_list():
+		if String(item.name) == prop:
+			return true
+	return false
 func _has_property(obj: Object, prop: String) -> bool:
 	if obj == null:
 			return false
