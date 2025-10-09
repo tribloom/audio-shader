@@ -63,6 +63,7 @@ var _offline_frame_map: Dictionary = {}        # frame index -> feature array in
 var _offline_fps: float = 60.0
 var _offline_dt: float = 1.0 / 60.0
 var _offline_last_index: int = 0
+var _offline_time_offset: float = 0.0
 var _offline_wave_samples: PackedFloat32Array = PackedFloat32Array()
 var _offline_wave_rate: float = 0.0
 var _offline_wave_duration: float = 0.0
@@ -479,7 +480,10 @@ func set_playhead(t: float) -> void:
 				if _offline_playhead <= idx_time:
 						_offline_last_index = 0
 
-func load_features_csv(path: String) -> void:
+
+
+
+func load_features_csv(path: String, start_time: float = 0.0, end_time: float = -1.0) -> void:
 	var resolved_path := _normalize_resource_path(path)
 	if resolved_path == "":
 		push_warning("Features CSV path was empty or invalid: %s" % path)
@@ -521,6 +525,13 @@ func load_features_csv(path: String) -> void:
 	band_columns.sort_custom(func(a, b):
 		return int(String(a).substr(1)) < int(String(b).substr(1)))
 
+	var window_start := max(start_time, 0.0)
+	var window_end := -1.0
+	if end_time > 0.0 and end_time > window_start:
+		window_end = end_time
+	var use_window := window_start > 0.0 or window_end > 0.0
+	var cutoff_epsilon := 0.0001
+
 	var features: Array = []
 	var frame_map := {}
 	var prev_time := -1.0
@@ -539,6 +550,12 @@ func load_features_csv(path: String) -> void:
 		var level_val := cells[col_index["level"]].strip_edges().to_float()
 		var kick_val := cells[col_index["kick"]].strip_edges().to_float()
 
+		if use_window:
+			if t_val + cutoff_epsilon < window_start:
+				continue
+			if window_end > 0.0 and t_val - cutoff_epsilon >= window_end:
+				break
+
 		var bands := PackedFloat32Array()
 		bands.resize(band_columns.size())
 		for bi in range(band_columns.size()):
@@ -549,28 +566,33 @@ func load_features_csv(path: String) -> void:
 			else:
 				bands[bi] = 0.0
 
-		features.append({
-			"frame": frame_idx,
-			"t": t_val,
+		var adj_time := t_val
+		if use_window:
+			adj_time = max(0.0, t_val - window_start)
+
+		var local_frame := features.size()
+		var entry := {
+			"frame": local_frame,
+			"t": adj_time,
 			"level": clamp(level_val, 0.0, 1.0),
 			"kick": clamp(kick_val, 0.0, 1.0),
 			"bands": bands,
-		})
-		frame_map[frame_idx] = features.size() - 1
+		}
+		if frame_idx != local_frame:
+			entry["source_frame"] = frame_idx
+		entry["source_time"] = t_val
+		features.append(entry)
+		frame_map[local_frame] = features.size() - 1
 
 		if prev_time >= 0.0:
-			var step = max(0.0, t_val - prev_time)
+			var step = max(0.0, adj_time - prev_time)
 			if step > 0.0:
 				dt_accum += step
 				dt_count += 1
-		prev_time = t_val
-		last_time = t_val
+		prev_time = adj_time
+		last_time = adj_time
 
 	f.close()
-
-	if features.is_empty():
-		push_warning("Features CSV contained no rows after parsing: %s" % resolved_path)
-		return
 
 	_offline_features = features
 	_offline_frame_map = frame_map
@@ -578,6 +600,7 @@ func load_features_csv(path: String) -> void:
 	_offline_playhead = 0.0
 	_last_play_pos = 0.0
 	_debug_missing_offline_logged = false
+	_offline_time_offset = window_start if use_window else 0.0
 	offline_features_path = resolved_path
 
 	if dt_count > 0 and dt_accum > 0.0:
@@ -594,12 +617,15 @@ func load_features_csv(path: String) -> void:
 	_offline_fps = 1.0 / _offline_dt
 	_offline_wave_duration = last_time
 
-	print("[Visualizer] Offline features loaded from %s (%d frames)" % [resolved_path, features.size()])
+	if use_window:
+		print("[Visualizer] Offline features loaded from %s (%d frames, window %.3fs-%.3fs)" % [resolved_path, features.size(), window_start, window_end if window_end > 0.0 else -1.0])
+	else:
+		print("[Visualizer] Offline features loaded from %s (%d frames)" % [resolved_path, features.size()])
 
 	_ensure_offline_enabled()
 
 
-func load_waveform_binary(base_path: String) -> void:
+func load_waveform_binary(base_path: String, start_time: float = 0.0, end_time: float = -1.0) -> void:
 	if base_path == "":
 		return
 	var bin_path := base_path + ".f32"
@@ -635,22 +661,49 @@ func load_waveform_binary(base_path: String) -> void:
 			else:
 				samples[i] = bin_file.get_float()
 	else:
-		while !bin_file.eof_reached():
+		while not bin_file.eof_reached():
 			samples.append(bin_file.get_float())
 	bin_file.close()
 
 	offline_waveform_base = base_path
-	_offline_wave_samples = samples
-	if samples.size() > 0:
-		print("[Visualizer] Offline waveform loaded from %s (%d samples)" % [base_path, samples.size()])
-	if _offline_wave_rate > 0.0 and samples.size() > 0:
-			_offline_wave_duration = float(samples.size()) / _offline_wave_rate
+	var window_start := max(start_time, 0.0)
+	var window_end := -1.0
+	if end_time > 0.0 and end_time > window_start:
+		window_end = end_time
+	var use_window := window_start > 0.0 or window_end > 0.0
+	var final_samples := samples
+	if use_window and _offline_wave_rate > 0.0 and samples.size() > 0:
+		var sr := _offline_wave_rate
+		var start_idx := int(floor(window_start * sr))
+		var end_idx := samples.size()
+		if window_end > 0.0:
+			end_idx = int(ceil(window_end * sr))
+		start_idx = clampi(start_idx, 0, samples.size())
+		end_idx = clampi(end_idx, start_idx, samples.size())
+		if start_idx > 0 or end_idx < samples.size():
+			var length := end_idx - start_idx
+			var clipped := PackedFloat32Array()
+			clipped.resize(length)
+			for i in range(length):
+				clipped[i] = samples[start_idx + i]
+			final_samples = clipped
+	if final_samples.size() == 0:
+		final_samples = samples
+	_offline_wave_samples = final_samples
+	if final_samples.size() > 0:
+		if use_window:
+			print("[Visualizer] Offline waveform loaded from %s (%d samples, window %.3fs-%.3fs)" % [base_path, final_samples.size(), window_start, window_end if window_end > 0.0 else -1.0])
+		else:
+			print("[Visualizer] Offline waveform loaded from %s (%d samples)" % [base_path, final_samples.size()])
+	if _offline_wave_rate > 0.0 and final_samples.size() > 0:
+		_offline_wave_duration = float(final_samples.size()) / _offline_wave_rate
 	elif _offline_features.size() > 0:
-			_offline_wave_duration = float(_offline_features.back().get("t", 0.0))
+		_offline_wave_duration = float(_offline_features.back().get("t", 0.0))
 	else:
 		_offline_wave_duration = 0.0
 
 	_ensure_offline_enabled()
+
 
 func _detect_runtime_environment() -> void:
 	var display_name := DisplayServer.get_name()
@@ -1525,11 +1578,11 @@ func _parse_tracklist() -> void:
 	var lines: PackedStringArray = []
 
 	if tracklist_path != "":
-		var f := FileAccess.open(tracklist_path, FileAccess.READ)
-		if f:
-			while not f.eof_reached():
-				lines.append(f.get_line())
-			f.close()
+		var file := _open_tracklist_source(tracklist_path)
+		if file:
+			while not file.eof_reached():
+				lines.append(file.get_line())
+			file.close()
 		else:
 			push_warning("Tracklist file not found: %s. Falling back to inline lines." % tracklist_path)
 
@@ -1551,6 +1604,8 @@ func _parse_tracklist() -> void:
 		var title := rest
 		var shader_name := ""
 		var params := {}
+		var duration_hint := -1.0
+		var explicit_end := -1.0
 
 		# Look for directives after '|'
 		if rest.find("|") >= 0:
@@ -1567,25 +1622,76 @@ func _parse_tracklist() -> void:
 						params = obj
 					else:
 						push_warning("Bad JSON in set=: %s" % json_txt)
+				elif seg.begins_with("duration="):
+					duration_hint = _parse_duration_to_seconds(seg.substr("duration=".length()).strip_edges())
+				elif seg.begins_with("end="):
+					explicit_end = _parse_duration_to_seconds(seg.substr("end=".length()).strip_edges())
 
 		var sec := _parse_timestamp_to_seconds(ts)
 		if sec < 0.0:
 			continue
 
-		_cues.append({
+		var cue := {
 			"t": sec,
 			"title": title,
 			"shader": shader_name,
-			"params": params
-		})
+			"params": params,
+			"duration_hint": duration_hint,
+			"explicit_end": explicit_end,
+		}
+		_cues.append(cue)
 
 	_cues.sort_custom(func(a, b): return a["t"] < b["t"])
+	for i in range(_cues.size()):
+		var current: Dictionary = _cues[i]
+		var sec := float(current.get("t", -1.0))
+		if sec < 0.0:
+			continue
+		var next_sec := float(current.get("explicit_end", -1.0))
+		var dur_hint := float(current.get("duration_hint", -1.0))
+		if next_sec <= sec and dur_hint > 0.0:
+			next_sec = sec + dur_hint
+		if next_sec <= sec and i + 1 < _cues.size():
+			next_sec = float(_cues[i + 1].get("t", -1.0))
+		current["next_seconds"] = next_sec
+		_cues[i] = current
+
 	_current_cue_idx = -1
 	_last_play_pos = 0.0
 	_resume_from_pos = 0.0
 	if debug_log_tracklist:
 		_log_tracklist_debug()
 	_update_track_overlay(_last_play_pos)
+
+func _open_tracklist_source(raw_path: String) -> FileAccess:
+	var candidates: Array[String] = []
+	var trimmed := raw_path.strip_edges()
+	if trimmed != "":
+		candidates.append(trimmed)
+	var normalized := _normalize_resource_path(trimmed)
+	if normalized != "" and normalized != trimmed:
+		candidates.append(normalized)
+	if normalized != "":
+		var global_norm := ProjectSettings.globalize_path(normalized)
+		if global_norm != normalized:
+			candidates.append(global_norm)
+	if trimmed != "" and !trimmed.begins_with("res://") and !trimmed.begins_with("user://") and !trimmed.is_absolute_path():
+		var res_candidate := "res://".path_join(trimmed)
+		if res_candidate != normalized:
+			candidates.append(res_candidate)
+		var global_res := ProjectSettings.globalize_path(res_candidate)
+		if global_res != res_candidate:
+			candidates.append(global_res)
+	var seen := {}
+	for candidate in candidates:
+		var path_opt := candidate.strip_edges()
+		if path_opt == "" or seen.has(path_opt):
+			continue
+		seen[path_opt] = true
+		var f := FileAccess.open(path_opt, FileAccess.READ)
+		if f != null:
+			return f
+	return null
 
 func apply_tracklist_entry(entry: Dictionary) -> void:
 	if entry == null or entry.is_empty():
@@ -1645,6 +1751,17 @@ func _parse_timestamp_to_seconds(ts: String) -> float:
 		return -1.0
 	return float(h * 3600 + m * 60 + s)
 
+func _parse_duration_to_seconds(text: String) -> float:
+	if text == "":
+		return -1.0
+	if text.find(":") >= 0:
+		return _parse_timestamp_to_seconds(text)
+	var val := text.to_float()
+	if val < 0.0:
+		return -1.0
+	return val
+
+
 func _format_clock(sec: float) -> String:
 	if sec < 0.0:
 		sec = 0.0
@@ -1680,27 +1797,42 @@ func _get_effective_playhead_time() -> float:
 
 func _update_track_overlay(now_sec: float) -> void:
 	_update_overlay_visibility()
-	if not overlay_enabled or _title_label == null or _time_label == null:
-		return
+
+	var cue: Dictionary = {}
+	var cue_valid := false
+	var cue_changed := false
 
 	if _cues.is_empty():
-		_title_label.text = ""
+		if _current_cue_idx != -1:
+			_current_cue_idx = -1
+			cue_changed = true
 	else:
-		var idx := _find_current_cue_index(now_sec)
+		var idx := clampi(_find_current_cue_index(now_sec), 0, _cues.size() - 1)
+		cue = _cues[idx]
+		cue_valid = true
 		if idx != _current_cue_idx:
 			_current_cue_idx = idx
-			var cue = _cues[idx]
-			_title_label.text = String(cue["title"])
+			cue_changed = true
 
-			# --- NEW: apply shader + params if present ---
-			var sh := String(cue.get("shader", ""))
-			if sh != "":
-				set_shader_by_name(sh)
-			var p = cue.get("params", {})
-			if p is Dictionary and (p as Dictionary).size() > 0:
-				_apply_shader_params(p)
+	if cue_changed and cue_valid:
+		var sh := String(cue.get("shader", ""))
+		if sh != "":
+			set_shader_by_name(sh)
+		var p = cue.get("params", {})
+		if p is Dictionary and (p as Dictionary).size() > 0:
+			_apply_shader_params(p)
 
-	_time_label.text = _format_clock(now_sec)
+	if overlay_enabled:
+		if _title_label != null:
+			if cue_valid:
+				_title_label.text = String(cue.get("title", ""))
+			else:
+				_title_label.text = ""
+	elif _title_label != null and !cue_valid:
+		_title_label.text = ""
+
+	if _time_label != null:
+		_time_label.text = _format_clock(now_sec)
 
 
 func set_paused_playback_position(pos: float) -> void:
