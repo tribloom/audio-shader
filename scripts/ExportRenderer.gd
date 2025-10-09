@@ -27,6 +27,8 @@ var track_index: int = 1
 var track_index_specified: bool = false
 var tracklist_inline: PackedStringArray = PackedStringArray()
 var selected_track_entry: Dictionary = {}
+var track_start_time: float = 0.0
+var track_end_time: float = -1.0
 
 func _initialize() -> void:
 	_parse_args()
@@ -101,48 +103,100 @@ func _initialize() -> void:
 		root_node.call("set_aspect", float(width) / float(height))
 
 	duration_s = _infer_duration(features_path)
+	var total_duration_s := duration_s
 	if root_node.has_method("get_offline_duration"):
 		var offline_dur = float(root_node.call("get_offline_duration"))
 		if offline_dur > 0.0:
 			duration_s = offline_dur
+			total_duration_s = offline_dur
+
+	if track_index_specified:
+		if total_duration_s > 0.0:
+			track_start_time = clamp(track_start_time, 0.0, total_duration_s)
+		else:
+			track_start_time = max(track_start_time, 0.0)
+
+		var stop_time := track_end_time
+		if stop_time <= track_start_time and total_duration_s > 0.0:
+			stop_time = total_duration_s
+		elif stop_time <= track_start_time:
+			stop_time = track_start_time
+		if total_duration_s > 0.0:
+			stop_time = clamp(stop_time, track_start_time, total_duration_s)
+		track_end_time = stop_time
+		duration_s = max(track_end_time - track_start_time, 0.0)
 	DirAccess.make_dir_recursive_absolute(out_dir_fs)
 
 	# Deterministic frame loop
 	var frames_total := int(ceil(duration_s * float(fps)))
+	var using_offline_frames := false
+	var frame_start_idx := 0
 	if root_node.has_method("get_offline_frame_count"):
 		var offline_frames = int(root_node.call("get_offline_frame_count"))
 		if offline_frames > 0:
-			frames_total = offline_frames
-	for i in range(frames_total):
-		var t := float(i) / float(fps)
-		var should_log_frame := (i == 0 or i % 3600 == 0)
-		if root_node.has_method("get_offline_time_at_index"):
-			var t_override = root_node.call("get_offline_time_at_index", i)
-			if typeof(t_override) == TYPE_FLOAT and t_override >= 0.0:
-				t = t_override
-		elif root_node.has_method("get_offline_time_for_frame"):
-			var frame_time = root_node.call("get_offline_time_for_frame", i)
-			if typeof(frame_time) == TYPE_FLOAT and frame_time >= 0.0:
-				t = frame_time
+			using_offline_frames = true
+			if track_index_specified:
+				frame_start_idx = _find_frame_index_for_time(track_start_time, offline_frames)
+				var target_end := track_end_time
+				if target_end <= track_start_time:
+					target_end = total_duration_s
+				var found_end := offline_frames
+				if target_end > track_start_time:
+					found_end = _find_frame_index_for_time(target_end, offline_frames)
+				var frame_end_idx := clampi(found_end, frame_start_idx, offline_frames)
+				frames_total = max(0, frame_end_idx - frame_start_idx)
+			else:
+				frame_start_idx = 0
+				frames_total = offline_frames
+	if frames_total <= 0:
+		push_warning("No frames to render (duration=%.3fs, fps=%d)." % [duration_s, fps])
+		quit()
+		return
+	for local_frame in range(frames_total):
+		var source_frame := local_frame
+		if using_offline_frames:
+			source_frame = frame_start_idx + local_frame
+		var t := float(local_frame) / float(fps)
+		if using_offline_frames:
+			t = _get_time_for_frame_index(source_frame)
+		else:
+			if track_index_specified:
+				t = track_start_time + t
+		var should_log_frame := (local_frame == 0 or local_frame % 3600 == 0)
+		if !using_offline_frames:
+			if root_node.has_method("get_offline_time_at_index"):
+				var t_override = root_node.call("get_offline_time_at_index", local_frame)
+				if typeof(t_override) == TYPE_FLOAT and t_override >= 0.0:
+					t = t_override
+			elif root_node.has_method("get_offline_time_for_frame"):
+				var frame_time = root_node.call("get_offline_time_for_frame", local_frame)
+				if typeof(frame_time) == TYPE_FLOAT and frame_time >= 0.0:
+					t = frame_time
+				if track_index_specified and t < track_start_time:
+					t = track_start_time
+
+		if track_index_specified and track_end_time > track_start_time and t >= track_end_time:
+			break
+
 		if root_node.has_method("set_playhead"):
 			root_node.call("set_playhead", t)
 
 		if should_log_frame:
-			print("[ExportRenderer] Awaiting process_frame for frame %d/%d (t=%.3fs)" % [i, frames_total, t])
+			print("[ExportRenderer] Awaiting process_frame for frame %d/%d (t=%.3fs)" % [local_frame, frames_total, t])
 
 		# Advance one engine frame, then wait for the render thread to flush
 		await self.process_frame
 		await _await_render_sync()
 
 		if should_log_frame:
-			print("[ExportRenderer] process_frame completed for frame %d/%d" % [i, frames_total])
+			print("[ExportRenderer] process_frame completed for frame %d/%d" % [local_frame, frames_total])
 
 		var img := await _capture_subviewport_image()
 		if img == null:
 			return
 
 		var ext := ("jpg" if save_jpg else "png")
-		var filename := "%06d.%s" % [i, ext]
+		var filename := "%06d.%s" % [local_frame, ext]
 		var path := out_dir_fs.path_join(filename)
 		if save_jpg:
 			img.save_jpg(path, int(round(jpg_quality * 100.0)))
@@ -150,7 +204,7 @@ func _initialize() -> void:
 			img.save_png(path)
 
 		if should_log_frame:
-			print("[ExportRenderer] Saved frame %d/%d -> %s" % [i, frames_total, path])
+			print("[ExportRenderer] Saved frame %d/%d -> %s" % [local_frame, frames_total, path])
 	quit()
 
 
@@ -354,6 +408,8 @@ func _log_parsed_configuration(raw: PackedStringArray) -> void:
 		["track_index", track_index],
 		["track_index_specified", track_index_specified],
 		["tracklist_inline_size", tracklist_inline.size()],
+		["track_start_time", track_start_time],
+		["track_end_time", track_end_time],
 	]
 	print("[ExportRenderer] Parsed configuration:")
 	for item in summary:
@@ -362,6 +418,8 @@ func _log_parsed_configuration(raw: PackedStringArray) -> void:
 func _prepare_tracklist_override() -> void:
 	selected_track_entry = {}
 	tracklist_inline = PackedStringArray()
+	track_start_time = 0.0
+	track_end_time = -1.0
 	if tracklist_path == "":
 			return
 
@@ -379,6 +437,8 @@ func _prepare_tracklist_override() -> void:
 	if track_index_specified and (idx != track_index - 1):
 			push_warning("Track index %d is out of range. Using entry %d." % [track_index, idx + 1])
 	selected_track_entry = entries[idx]
+	track_start_time = float(selected_track_entry.get("seconds", 0.0))
+	track_end_time = float(selected_track_entry.get("next_seconds", -1.0))
 
 	if track_index_specified:
 			var body := String(selected_track_entry.get("body", ""))
@@ -418,12 +478,17 @@ func _parse_tracklist_entries(lines: PackedStringArray) -> Array:
 			if space_idx < 0:
 					continue
 			var ts := line.substr(0, space_idx).strip_edges()
+			var ts_seconds := _parse_timestamp_to_seconds(ts)
+			if ts_seconds < 0.0:
+					continue
 			var body := line.substr(space_idx + 1).strip_edges()
 			if body == "":
 					continue
 			var title := body
 			var shader_name := ""
 			var params := {}
+			var duration_hint := -1.0
+			var explicit_end := -1.0
 			if body.find("|") >= 0:
 					var parts := body.split("|")
 					title = parts[0].strip_edges()
@@ -440,14 +505,104 @@ func _parse_tracklist_entries(lines: PackedStringArray) -> Array:
 											params = parsed
 									else:
 											push_warning("Invalid JSON in tracklist set= directive: %s" % json_txt)
+							elif seg.begins_with("duration="):
+									var dur_txt := seg.substr("duration=".length()).strip_edges()
+									var dur_val := _parse_duration_to_seconds(dur_txt)
+									if dur_val >= 0.0:
+											duration_hint = dur_val
+							elif seg.begins_with("end="):
+									var end_txt := seg.substr("end=".length()).strip_edges()
+									var end_val := _parse_timestamp_to_seconds(end_txt)
+									if end_val >= 0.0:
+											explicit_end = end_val
 			out.append({
 					"timestamp": ts,
 					"body": body,
 					"title": title,
 					"shader": shader_name,
 					"params": params,
+					"seconds": ts_seconds,
+					"duration_hint": duration_hint,
+					"explicit_end": explicit_end,
 			})
+
+	for i in range(out.size()):
+			var current: Dictionary = out[i]
+			var sec := float(current.get("seconds", -1.0))
+			if sec < 0.0:
+					continue
+			var next_sec := float(current.get("explicit_end", -1.0))
+			var dur_hint := float(current.get("duration_hint", -1.0))
+			if next_sec <= sec and dur_hint > 0.0:
+					next_sec = sec + dur_hint
+			if next_sec <= sec and i + 1 < out.size():
+					var subsequent: Dictionary = out[i + 1]
+					var subsequent_sec := float(subsequent.get("seconds", -1.0))
+					if subsequent_sec >= 0.0:
+							next_sec = subsequent_sec
+			current["next_seconds"] = next_sec
 	return out
+
+func _parse_timestamp_to_seconds(ts: String) -> float:
+	var parts := ts.split(":")
+	if parts.is_empty():
+		return -1.0
+	for i in range(parts.size()):
+		parts[i] = String(parts[i]).strip_edges()
+	var h := 0
+	var m := 0
+	var s := 0
+	if parts.size() == 2:
+		m = int(parts[0])
+		s = int(parts[1])
+	elif parts.size() == 3:
+		h = int(parts[0])
+		m = int(parts[1])
+		s = int(parts[2])
+	else:
+		return -1.0
+	if m < 0 or s < 0 or s >= 60:
+		return -1.0
+	return float(h * 3600 + m * 60 + s)
+
+func _parse_duration_to_seconds(text: String) -> float:
+	if text == "":
+		return -1.0
+	if text.find(":") >= 0:
+		return _parse_timestamp_to_seconds(text)
+	var val := text.to_float()
+	if val < 0.0:
+		return -1.0
+	return val
+
+func _get_time_for_frame_index(idx: int) -> float:
+	if root_node == null or idx < 0:
+		return -1.0
+	if root_node.has_method("get_offline_time_at_index"):
+		var t_override = root_node.call("get_offline_time_at_index", idx)
+		if typeof(t_override) == TYPE_FLOAT:
+			return float(t_override)
+	if root_node.has_method("get_offline_time_for_frame"):
+		var frame_time = root_node.call("get_offline_time_for_frame", idx)
+		if typeof(frame_time) == TYPE_FLOAT:
+			return float(frame_time)
+	if fps > 0:
+		return float(idx) / float(fps)
+	return -1.0
+
+func _find_frame_index_for_time(target_time: float, frame_count: int) -> int:
+	if frame_count <= 0:
+		return 0
+	if target_time <= 0.0:
+		return 0
+	var epsilon := 0.0005
+	for idx in range(frame_count):
+		var t := _get_time_for_frame_index(idx)
+		if t < 0.0:
+			continue
+		if t + epsilon >= target_time:
+			return idx
+	return frame_count
 
 func _apply_tracklist_properties(node: Node) -> void:
 	if node == null:

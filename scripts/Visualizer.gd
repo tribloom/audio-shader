@@ -1680,27 +1680,42 @@ func _get_effective_playhead_time() -> float:
 
 func _update_track_overlay(now_sec: float) -> void:
 	_update_overlay_visibility()
-	if not overlay_enabled or _title_label == null or _time_label == null:
-		return
+
+	var cue: Dictionary = {}
+	var cue_valid := false
+	var cue_changed := false
 
 	if _cues.is_empty():
-		_title_label.text = ""
+		if _current_cue_idx != -1:
+			_current_cue_idx = -1
+			cue_changed = true
 	else:
-		var idx := _find_current_cue_index(now_sec)
+		var idx := clampi(_find_current_cue_index(now_sec), 0, _cues.size() - 1)
+		cue = _cues[idx]
+		cue_valid = true
 		if idx != _current_cue_idx:
 			_current_cue_idx = idx
-			var cue = _cues[idx]
-			_title_label.text = String(cue["title"])
+			cue_changed = true
 
-			# --- NEW: apply shader + params if present ---
-			var sh := String(cue.get("shader", ""))
-			if sh != "":
-				set_shader_by_name(sh)
-			var p = cue.get("params", {})
-			if p is Dictionary and (p as Dictionary).size() > 0:
-				_apply_shader_params(p)
+	if cue_changed and cue_valid:
+		var sh := String(cue.get("shader", ""))
+		if sh != "":
+			set_shader_by_name(sh)
+		var p = cue.get("params", {})
+		if p is Dictionary and (p as Dictionary).size() > 0:
+			_apply_shader_params(p)
 
-	_time_label.text = _format_clock(now_sec)
+	if overlay_enabled:
+		if _title_label != null:
+			if cue_valid:
+				_title_label.text = String(cue.get("title", ""))
+			else:
+				_title_label.text = ""
+	elif _title_label != null and !cue_valid:
+		_title_label.text = ""
+
+	if _time_label != null:
+		_time_label.text = _format_clock(now_sec)
 
 
 func set_paused_playback_position(pos: float) -> void:
