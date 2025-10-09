@@ -31,11 +31,14 @@ Godot_v4.4-stable_win64.exe --headless --path . ^
   --waveform tools/offline_render/waveform_2048 ^
   --tracklist tracklist-vol1.txt ^
   --track 1 ^
+  --no-overlay ^
   --fps 60 --w 1920 --h 1080 ^
   --out export/frames --jpg 1 --quality 0.9
 ```
 
 `--tracklist` points to a plain-text playlist (see the `tracklist-vol*.txt` samples). Use `--track` to select the 1-based entry to render. Omit `--track` to keep the scene's default configuration while still letting the renderer resolve resources from the provided tracklist.
+
+`--no-overlay` disables the on-screen overlay in headless exports. You can also pass `--overlay=0` or `--overlay=1` to set it explicitly.
 
 The renderer writes one numbered frame per timestep. Combine them with FFmpeg and mux in the original audio:
 
