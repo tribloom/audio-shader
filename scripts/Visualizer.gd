@@ -63,6 +63,7 @@ var _offline_frame_map: Dictionary = {}        # frame index -> feature array in
 var _offline_fps: float = 60.0
 var _offline_dt: float = 1.0 / 60.0
 var _offline_last_index: int = 0
+var _offline_time_offset: float = 0.0
 var _offline_wave_samples: PackedFloat32Array = PackedFloat32Array()
 var _offline_wave_rate: float = 0.0
 var _offline_wave_duration: float = 0.0
@@ -479,7 +480,8 @@ func set_playhead(t: float) -> void:
 				if _offline_playhead <= idx_time:
 						_offline_last_index = 0
 
-func load_features_csv(path: String) -> void:
+
+func load_features_csv(path: String, start_time: float = 0.0, end_time: float = -1.0) -> void:
 	var resolved_path := _normalize_resource_path(path)
 	if resolved_path == "":
 		push_warning("Features CSV path was empty or invalid: %s" % path)
@@ -521,6 +523,13 @@ func load_features_csv(path: String) -> void:
 	band_columns.sort_custom(func(a, b):
 		return int(String(a).substr(1)) < int(String(b).substr(1)))
 
+	var window_start := max(start_time, 0.0)
+	var window_end := -1.0
+	if end_time > 0.0 and end_time > window_start:
+		window_end = end_time
+	var use_window := window_start > 0.0 or window_end > 0.0
+	var cutoff_epsilon := 0.0001
+
 	var features: Array = []
 	var frame_map := {}
 	var prev_time := -1.0
@@ -539,6 +548,12 @@ func load_features_csv(path: String) -> void:
 		var level_val := cells[col_index["level"]].strip_edges().to_float()
 		var kick_val := cells[col_index["kick"]].strip_edges().to_float()
 
+		if use_window:
+			if t_val + cutoff_epsilon < window_start:
+				continue
+			if window_end > 0.0 and t_val - cutoff_epsilon >= window_end:
+				break
+
 		var bands := PackedFloat32Array()
 		bands.resize(band_columns.size())
 		for bi in range(band_columns.size()):
@@ -549,22 +564,31 @@ func load_features_csv(path: String) -> void:
 			else:
 				bands[bi] = 0.0
 
-		features.append({
-			"frame": frame_idx,
-			"t": t_val,
+		var adj_time := t_val
+		if use_window:
+			adj_time = max(0.0, t_val - window_start)
+
+		var local_frame := features.size()
+		var entry := {
+			"frame": local_frame,
+			"t": adj_time,
 			"level": clamp(level_val, 0.0, 1.0),
 			"kick": clamp(kick_val, 0.0, 1.0),
 			"bands": bands,
-		})
-		frame_map[frame_idx] = features.size() - 1
+		}
+		if frame_idx != local_frame:
+			entry["source_frame"] = frame_idx
+		entry["source_time"] = t_val
+		features.append(entry)
+		frame_map[local_frame] = features.size() - 1
 
 		if prev_time >= 0.0:
-			var step = max(0.0, t_val - prev_time)
+			var step = max(0.0, adj_time - prev_time)
 			if step > 0.0:
 				dt_accum += step
 				dt_count += 1
-		prev_time = t_val
-		last_time = t_val
+		prev_time = adj_time
+		last_time = adj_time
 
 	f.close()
 
@@ -578,6 +602,7 @@ func load_features_csv(path: String) -> void:
 	_offline_playhead = 0.0
 	_last_play_pos = 0.0
 	_debug_missing_offline_logged = false
+	_offline_time_offset = window_start if use_window else 0.0
 	offline_features_path = resolved_path
 
 	if dt_count > 0 and dt_accum > 0.0:
@@ -594,12 +619,14 @@ func load_features_csv(path: String) -> void:
 	_offline_fps = 1.0 / _offline_dt
 	_offline_wave_duration = last_time
 
-	print("[Visualizer] Offline features loaded from %s (%d frames)" % [resolved_path, features.size()])
+	if use_window:
+		print("[Visualizer] Offline features loaded from %s (%d frames, window %.3fs-%.3fs)" % [resolved_path, features.size(), window_start, window_end if window_end > 0.0 else -1.0])
+	else:
+		print("[Visualizer] Offline features loaded from %s (%d frames)" % [resolved_path, features.size()])
 
 	_ensure_offline_enabled()
 
-
-func load_waveform_binary(base_path: String) -> void:
+func load_waveform_binary(base_path: String, start_time: float = 0.0, end_time: float = -1.0) -> void:
 	if base_path == "":
 		return
 	var bin_path := base_path + ".f32"
@@ -640,13 +667,39 @@ func load_waveform_binary(base_path: String) -> void:
 	bin_file.close()
 
 	offline_waveform_base = base_path
-	_offline_wave_samples = samples
-	if samples.size() > 0:
-		print("[Visualizer] Offline waveform loaded from %s (%d samples)" % [base_path, samples.size()])
-	if _offline_wave_rate > 0.0 and samples.size() > 0:
-			_offline_wave_duration = float(samples.size()) / _offline_wave_rate
+	var window_start := max(start_time, 0.0)
+	var window_end := -1.0
+	if end_time > 0.0 and end_time > window_start:
+		window_end = end_time
+	var use_window := window_start > 0.0 or window_end > 0.0
+	var final_samples := samples
+	if use_window and _offline_wave_rate > 0.0 and samples.size() > 0:
+		var sr := _offline_wave_rate
+		var start_idx := int(floor(window_start * sr))
+		var end_idx := samples.size()
+		if window_end > 0.0:
+			end_idx = int(ceil(window_end * sr))
+		start_idx = clampi(start_idx, 0, samples.size())
+		end_idx = clampi(end_idx, start_idx, samples.size())
+		if start_idx > 0 or end_idx < samples.size():
+			var length := end_idx - start_idx
+			var clipped := PackedFloat32Array()
+			clipped.resize(length)
+			for i in range(length):
+				clipped[i] = samples[start_idx + i]
+			final_samples = clipped
+	if final_samples.size() == 0:
+		final_samples = samples
+	_offline_wave_samples = final_samples
+	if final_samples.size() > 0:
+		if use_window:
+			print("[Visualizer] Offline waveform loaded from %s (%d samples, window %.3fs-%.3fs)" % [base_path, final_samples.size(), window_start, window_end if window_end > 0.0 else -1.0])
+		else:
+			print("[Visualizer] Offline waveform loaded from %s (%d samples)" % [base_path, final_samples.size()])
+	if _offline_wave_rate > 0.0 and final_samples.size() > 0:
+		_offline_wave_duration = float(final_samples.size()) / _offline_wave_rate
 	elif _offline_features.size() > 0:
-			_offline_wave_duration = float(_offline_features.back().get("t", 0.0))
+		_offline_wave_duration = float(_offline_features.back().get("t", 0.0))
 	else:
 		_offline_wave_duration = 0.0
 

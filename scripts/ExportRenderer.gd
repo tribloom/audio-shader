@@ -29,6 +29,8 @@ var tracklist_inline: PackedStringArray = PackedStringArray()
 var selected_track_entry: Dictionary = {}
 var track_start_time: float = 0.0
 var track_end_time: float = -1.0
+var track_source_start_time: float = 0.0
+var track_source_end_time: float = -1.0
 
 func _initialize() -> void:
 	_parse_args()
@@ -83,11 +85,16 @@ func _initialize() -> void:
 		root_node.call("set_frame_post_draw_supported", frame_post_draw_supported)
 
 	var features_path: String = args.get("features", "")
+	var feature_window_start := 0.0
+	var feature_window_end := -1.0
+	if track_index_specified:
+		feature_window_start = track_source_start_time
+		feature_window_end = track_source_end_time
 	if features_path != "" and root_node.has_method("load_features_csv"):
-		root_node.call("load_features_csv", features_path)
+		root_node.call("load_features_csv", features_path, feature_window_start, feature_window_end)
 	var waveform_path: String = args.get("waveform", "")
 	if waveform_path != "" and root_node.has_method("load_waveform_binary"):
-		root_node.call("load_waveform_binary", waveform_path)
+		root_node.call("load_waveform_binary", waveform_path, feature_window_start, feature_window_end)
 
 	svp.add_child(root_node)
 
@@ -102,29 +109,63 @@ func _initialize() -> void:
 	if root_node.has_method("set_aspect"):
 		root_node.call("set_aspect", float(width) / float(height))
 
+	var track_duration_hint := -1.0
+	if track_index_specified and track_source_end_time > track_source_start_time:
+		track_duration_hint = track_source_end_time - track_source_start_time
+	if track_duration_hint < 0.0 and track_index_specified and selected_track_entry.has("duration_hint"):
+		var hint_val := float(selected_track_entry.get("duration_hint", -1.0))
+		if hint_val > 0.0:
+			track_duration_hint = hint_val
+
 	duration_s = _infer_duration(features_path)
 	var total_duration_s := duration_s
+	var offline_dur := -1.0
 	if root_node.has_method("get_offline_duration"):
-		var offline_dur = float(root_node.call("get_offline_duration"))
+		offline_dur = float(root_node.call("get_offline_duration"))
 		if offline_dur > 0.0:
 			duration_s = offline_dur
 			total_duration_s = offline_dur
 
 	if track_index_specified:
-		if total_duration_s > 0.0:
-			track_start_time = clamp(track_start_time, 0.0, total_duration_s)
+		var relative_duration := -1.0
+		if offline_dur > 0.0:
+			relative_duration = offline_dur
+		elif track_duration_hint > 0.0:
+			relative_duration = track_duration_hint
+		elif total_duration_s > 0.0:
+			relative_duration = total_duration_s
+
+	track_start_time = 0.0
+		if relative_duration > 0.0:
+			track_end_time = relative_duration
+		elif track_duration_hint > 0.0:
+			track_end_time = track_duration_hint
+		elif total_duration_s > 0.0:
+			track_end_time = total_duration_s
 		else:
-			track_start_time = max(track_start_time, 0.0)
+	track_end_time = -1.0
 
 		var stop_time := track_end_time
-		if stop_time <= track_start_time and total_duration_s > 0.0:
+		if stop_time <= track_start_time and relative_duration > 0.0:
+			stop_time = relative_duration
+		elif stop_time <= track_start_time and track_duration_hint > 0.0:
+			stop_time = track_duration_hint
+		elif stop_time <= track_start_time and total_duration_s > 0.0:
 			stop_time = total_duration_s
 		elif stop_time <= track_start_time:
 			stop_time = track_start_time
-		if total_duration_s > 0.0:
+		if relative_duration > 0.0:
+			stop_time = clamp(stop_time, track_start_time, relative_duration)
+		elif track_duration_hint > 0.0:
+			stop_time = clamp(stop_time, track_start_time, track_duration_hint)
+		elif total_duration_s > 0.0:
 			stop_time = clamp(stop_time, track_start_time, total_duration_s)
 		track_end_time = stop_time
-		duration_s = max(track_end_time - track_start_time, 0.0)
+		if relative_duration > 0.0:
+			duration_s = relative_duration
+		else:
+			duration_s = max(track_end_time - track_start_time, 0.0)
+		total_duration_s = duration_s
 	DirAccess.make_dir_recursive_absolute(out_dir_fs)
 
 	# Deterministic frame loop
@@ -410,7 +451,9 @@ func _log_parsed_configuration(raw: PackedStringArray) -> void:
 		["tracklist_inline_size", tracklist_inline.size()],
 		["track_start_time", track_start_time],
 		["track_end_time", track_end_time],
-	]
+		["track_source_start_time", track_source_start_time],
+		["track_source_end_time", track_source_end_time],
+		]
 	print("[ExportRenderer] Parsed configuration:")
 	for item in summary:
 		print("  %s: %s" % [item[0], item[1]])
@@ -420,8 +463,10 @@ func _prepare_tracklist_override() -> void:
 	tracklist_inline = PackedStringArray()
 	track_start_time = 0.0
 	track_end_time = -1.0
+	track_source_start_time = 0.0
+	track_source_end_time = -1.0
 	if tracklist_path == "":
-			return
+		return
 
 	var lines := _read_tracklist_lines(tracklist_path)
 	if lines.is_empty():
@@ -437,8 +482,10 @@ func _prepare_tracklist_override() -> void:
 	if track_index_specified and (idx != track_index - 1):
 			push_warning("Track index %d is out of range. Using entry %d." % [track_index, idx + 1])
 	selected_track_entry = entries[idx]
-	track_start_time = float(selected_track_entry.get("seconds", 0.0))
-	track_end_time = float(selected_track_entry.get("next_seconds", -1.0))
+	track_source_start_time = float(selected_track_entry.get("seconds", 0.0))
+	track_source_end_time = float(selected_track_entry.get("next_seconds", -1.0))
+	track_start_time = track_source_start_time
+	track_end_time = track_source_end_time
 
 	if track_index_specified:
 			var body := String(selected_track_entry.get("body", ""))
