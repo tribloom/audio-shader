@@ -480,19 +480,11 @@ func set_playhead(t: float) -> void:
 						_offline_last_index = 0
 
 func load_features_csv(path: String) -> void:
-	_offline_features.clear()
-	_offline_last_index = 0
-	_offline_frame_map.clear()
-	_debug_missing_offline_logged = false
 	var resolved_path := _normalize_resource_path(path)
 	if resolved_path == "":
-		offline_features_path = ""
-		offline_features_path = ""
+		push_warning("Features CSV path was empty or invalid: %s" % path)
 		return
-	
-	offline_features_path = path
 
-	offline_features_path = resolved_path
 	var f := FileAccess.open(resolved_path, FileAccess.READ)
 	if f == null:
 		var global_path := ProjectSettings.globalize_path(resolved_path)
@@ -529,11 +521,12 @@ func load_features_csv(path: String) -> void:
 	band_columns.sort_custom(func(a, b):
 		return int(String(a).substr(1)) < int(String(b).substr(1)))
 
+	var features: Array = []
+	var frame_map := {}
 	var prev_time := -1.0
 	var dt_accum := 0.0
 	var dt_count := 0
 	var last_time := 0.0
-	var last_frame := 0
 	while !f.eof_reached():
 		var line := f.get_line()
 		if line.strip_edges() == "":
@@ -556,53 +549,55 @@ func load_features_csv(path: String) -> void:
 			else:
 				bands[bi] = 0.0
 
-			_offline_features.append({
-							"frame": frame_idx,
-							"t": t_val,
-							"level": clamp(level_val, 0.0, 1.0),
-							"kick": clamp(kick_val, 0.0, 1.0),
-							"bands": bands,
-			})
-			_offline_frame_map[frame_idx] = _offline_features.size() - 1
+		features.append({
+			"frame": frame_idx,
+			"t": t_val,
+			"level": clamp(level_val, 0.0, 1.0),
+			"kick": clamp(kick_val, 0.0, 1.0),
+			"bands": bands,
+		})
+		frame_map[frame_idx] = features.size() - 1
 
-			if prev_time >= 0.0:
-					var step = max(0.0, t_val - prev_time)
-					if step > 0.0:
-						dt_accum += step
-						dt_count += 1
+		if prev_time >= 0.0:
+			var step = max(0.0, t_val - prev_time)
+			if step > 0.0:
+				dt_accum += step
+				dt_count += 1
 		prev_time = t_val
 		last_time = t_val
-		last_frame = frame_idx
 
 	f.close()
 
-	#offline_features_path = path
-	print(_offline_features.size())
+	if features.is_empty():
+		push_warning("Features CSV contained no rows after parsing: %s" % resolved_path)
+		return
 
-	if dt_count > 0 and dt_accum > 0.0:
-			_offline_dt = dt_accum / float(dt_count)
-	elif _offline_features.size() > 1:
-			var first = _offline_features[0]
-			var second = _offline_features[1]
-			_offline_dt = max(1.0 / 60.0, float(second["t"]) - float(first["t"]))
-	else:
-			_offline_dt = 1.0 / 60.0
-
-	if _offline_dt <= 0.0:
-			_offline_dt = 1.0 / 60.0
-	_offline_fps = 1.0 / _offline_dt
+	_offline_features = features
+	_offline_frame_map = frame_map
+	_offline_last_index = 0
 	_offline_playhead = 0.0
 	_last_play_pos = 0.0
+	_debug_missing_offline_logged = false
+	offline_features_path = resolved_path
 
-	if _offline_features.size() > 0:
-		print("[Visualizer] Offline features loaded from %s (%d frames)" % [path, _offline_features.size()])
-		_offline_wave_duration = last_time
-		_debug_missing_offline_logged = false
+	if dt_count > 0 and dt_accum > 0.0:
+		_offline_dt = dt_accum / float(dt_count)
+	elif features.size() > 1:
+		var first = features[0]
+		var second = features[1]
+		_offline_dt = max(1.0 / 60.0, float(second["t"]) - float(first["t"]))
 	else:
-		_offline_wave_duration = 0.0
-		push_warning("Features CSV contained no rows after parsing: %s" % path)
+		_offline_dt = 1.0 / 60.0
+
+	if _offline_dt <= 0.0:
+		_offline_dt = 1.0 / 60.0
+	_offline_fps = 1.0 / _offline_dt
+	_offline_wave_duration = last_time
+
+	print("[Visualizer] Offline features loaded from %s (%d frames)" % [resolved_path, features.size()])
 
 	_ensure_offline_enabled()
+
 
 func load_waveform_binary(base_path: String) -> void:
 	if base_path == "":
@@ -876,69 +871,69 @@ func _process_offline() -> void:
 		_update_track_overlay(overlay_time)
 		return
 
-		var sample := _sample_offline_features(_offline_playhead)
-		if sample.is_empty():
-				_update_track_overlay(overlay_time)
-				return
+	var sample := _sample_offline_features(_offline_playhead)
+	if sample.is_empty():
+		_update_track_overlay(overlay_time)
+		return
 
-		level_sm = float(sample.get("level", 0.0))
-		kick_sm  = float(sample.get("kick", 0.0))
+	level_sm = float(sample.get("level", 0.0))
+	kick_sm = float(sample.get("kick", 0.0))
 
-		var bands = sample.get("bands", PackedFloat32Array())
-		if bands is PackedFloat32Array:
-				var arr := bands as PackedFloat32Array
-				if arr.size() > 0:
-						bass_sm = clamp(arr[0], 0.0, 1.0)
-						treb_sm = clamp(arr[arr.size() - 1], 0.0, 1.0)
-						tone_sm = _estimate_tone_from_bands(arr)
-						_apply_offline_spectrum(arr)
-				else:
-						_apply_offline_spectrum(PackedFloat32Array())
+	var bands = sample.get("bands", PackedFloat32Array())
+	if bands is PackedFloat32Array:
+		var arr := bands as PackedFloat32Array
+		if arr.size() > 0:
+			bass_sm = clamp(arr[0], 0.0, 1.0)
+			treb_sm = clamp(arr[arr.size() - 1], 0.0, 1.0)
+			tone_sm = _estimate_tone_from_bands(arr)
+			_apply_offline_spectrum(arr)
 		else:
-				_apply_offline_spectrum(PackedFloat32Array())
+			_apply_offline_spectrum(PackedFloat32Array())
+	else:
+		_apply_offline_spectrum(PackedFloat32Array())
 
-		var effective_dt := _offline_dt
-		if effective_dt <= 0.0:
-				effective_dt = 1.0 / max(1.0, _offline_fps)
-		if effective_dt <= 0.0:
-				effective_dt = 1.0 / 60.0
+	var effective_dt := _offline_dt
+	if effective_dt <= 0.0:
+		effective_dt = 1.0 / max(1.0, _offline_fps)
+	if effective_dt <= 0.0:
+		effective_dt = 1.0 / 60.0
 
-		_update_waveform_texture()
-		_update_spec_texture()
-		_advance_waterfall()
-		_update_kick_envelope(effective_dt)
+	_update_waveform_texture()
+	_update_spec_texture()
+	_advance_waterfall()
+	_update_kick_envelope(effective_dt)
 
-		var mat := color_rect.material as ShaderMaterial
-		if mat:
-				match mode:
-						Mode.CHROMA:
-								mat.set_shader_parameter("level", clamp(level_sm * level_boost, 0.0, 1.0))
-								mat.set_shader_parameter("kick",  clamp(kick_sm  * kick_boost,  0.0, 1.0))
-						Mode.CIRCLE:
-								mat.set_shader_parameter("bass",   clamp(bass_sm,  0.0, 1.0))
-								mat.set_shader_parameter("treble", clamp(treb_sm,  0.0, 1.0))
-								mat.set_shader_parameter("tone",   clamp(tone_sm,  0.0, 1.0))
-						Mode.WATERFALL:
-								if material_waterfall:
-										var head_norm := float(_wf_head) / float(max(1, waterfall_rows))
-										material_waterfall.set_shader_parameter("head_norm", head_norm)
-						Mode.AURORA, Mode.UNIVERSE, Mode.UNIVERSE_ALT:
-								mat.set_shader_parameter("kick_in",  clamp(kick_sm,   0.0, 1.0))
-								mat.set_shader_parameter("kick_env", clamp(_kick_env, 0.0, 1.0))
-								mat.set_shader_parameter("ring_age", clamp(_ring_age, 0.0, 1.0))
-						Mode.BASIC_AUDIO:
-								if material_basic_audio_shader:
-										var head_norm2 := float(_wf_head) / float(max(1, waterfall_rows))
-										material_basic_audio_shader.set_shader_parameter("head_norm", head_norm2)
+	var mat := color_rect.material as ShaderMaterial
+	if mat:
+		match mode:
+			Mode.CHROMA:
+				mat.set_shader_parameter("level", clamp(level_sm * level_boost, 0.0, 1.0))
+				mat.set_shader_parameter("kick", clamp(kick_sm * kick_boost, 0.0, 1.0))
+			Mode.CIRCLE:
+				mat.set_shader_parameter("bass", clamp(bass_sm, 0.0, 1.0))
+				mat.set_shader_parameter("treble", clamp(treb_sm, 0.0, 1.0))
+				mat.set_shader_parameter("tone", clamp(tone_sm, 0.0, 1.0))
+			Mode.WATERFALL:
+				if material_waterfall:
+					var head_norm := float(_wf_head) / float(max(1, waterfall_rows))
+					material_waterfall.set_shader_parameter("head_norm", head_norm)
+			Mode.AURORA, Mode.UNIVERSE, Mode.UNIVERSE_ALT:
+				mat.set_shader_parameter("kick_in", clamp(kick_sm, 0.0, 1.0))
+				mat.set_shader_parameter("kick_env", clamp(_kick_env, 0.0, 1.0))
+				mat.set_shader_parameter("ring_age", clamp(_ring_age, 0.0, 1.0))
+			Mode.BASIC_AUDIO:
+				if material_basic_audio_shader:
+					var head_norm2 := float(_wf_head) / float(max(1, waterfall_rows))
+					material_basic_audio_shader.set_shader_parameter("head_norm", head_norm2)
 
-				_set_uniform_if_present(mat, "aspect", _get_current_aspect())
-				_set_uniform_if_present(mat, "level_in", clamp(level_sm * level_boost, 0.0, 1.0))
-				_set_uniform_if_present(mat, "bass_in", clamp(bass_sm, 0.0, 1.0))
-				_set_uniform_if_present(mat, "treble_in", clamp(treb_sm, 0.0, 1.0))
-				_set_uniform_if_present(mat, "tone_in", clamp(tone_sm, 0.0, 1.0))
-				_set_uniform_if_present(mat, "kick_env", clamp(_kick_env, 0.0, 1.0))
-				_broadcast_audio_uniforms()
-				_debug_trace_audio_uniforms(effective_dt)
+		_set_uniform_if_present(mat, "aspect", _get_current_aspect())
+		_set_uniform_if_present(mat, "level_in", clamp(level_sm * level_boost, 0.0, 1.0))
+		_set_uniform_if_present(mat, "bass_in", clamp(bass_sm, 0.0, 1.0))
+		_set_uniform_if_present(mat, "treble_in", clamp(treb_sm, 0.0, 1.0))
+		_set_uniform_if_present(mat, "tone_in", clamp(tone_sm, 0.0, 1.0))
+		_set_uniform_if_present(mat, "kick_env", clamp(_kick_env, 0.0, 1.0))
+		_broadcast_audio_uniforms()
+		_debug_trace_audio_uniforms(effective_dt)
 
 	_update_aspect()
 	_update_track_overlay(overlay_time)
