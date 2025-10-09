@@ -188,7 +188,7 @@ func _initialize() -> void:
 				var target_end := track_end_time
 				if target_end <= track_start_time:
 					target_end = total_duration_s
-				var found_end := offline_frames
+				var found_end = offline_frames
 				if target_end > track_start_time:
 					found_end = _find_frame_index_for_time(target_end, offline_frames)
 				var frame_end_idx := clampi(found_end, frame_start_idx, offline_frames)

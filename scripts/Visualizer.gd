@@ -525,11 +525,11 @@ func load_features_csv(path: String, start_time: float = 0.0, end_time: float = 
 	band_columns.sort_custom(func(a, b):
 		return int(String(a).substr(1)) < int(String(b).substr(1)))
 
-	var window_start := max(start_time, 0.0)
+	var window_start = max(start_time, 0.0)
 	var window_end := -1.0
 	if end_time > 0.0 and end_time > window_start:
 		window_end = end_time
-	var use_window := window_start > 0.0 or window_end > 0.0
+	var use_window = window_start > 0.0 or window_end > 0.0
 	var cutoff_epsilon := 0.0001
 
 	var features: Array = []
@@ -666,11 +666,11 @@ func load_waveform_binary(base_path: String, start_time: float = 0.0, end_time: 
 	bin_file.close()
 
 	offline_waveform_base = base_path
-	var window_start := max(start_time, 0.0)
+	var window_start = max(start_time, 0.0)
 	var window_end := -1.0
 	if end_time > 0.0 and end_time > window_start:
 		window_end = end_time
-	var use_window := window_start > 0.0 or window_end > 0.0
+	var use_window = window_start > 0.0 or window_end > 0.0
 	var final_samples := samples
 	if use_window and _offline_wave_rate > 0.0 and samples.size() > 0:
 		var sr := _offline_wave_rate
