@@ -1525,11 +1525,11 @@ func _parse_tracklist() -> void:
 	var lines: PackedStringArray = []
 
 	if tracklist_path != "":
-		var f := FileAccess.open(tracklist_path, FileAccess.READ)
-		if f:
-			while not f.eof_reached():
-				lines.append(f.get_line())
-			f.close()
+		var file := _open_tracklist_source(tracklist_path)
+		if file:
+			while not file.eof_reached():
+				lines.append(file.get_line())
+			file.close()
 		else:
 			push_warning("Tracklist file not found: %s. Falling back to inline lines." % tracklist_path)
 
@@ -1586,6 +1586,36 @@ func _parse_tracklist() -> void:
 	if debug_log_tracklist:
 		_log_tracklist_debug()
 	_update_track_overlay(_last_play_pos)
+
+func _open_tracklist_source(raw_path: String) -> FileAccess:
+	var candidates: Array[String] = []
+	var trimmed := raw_path.strip_edges()
+	if trimmed != "":
+		candidates.append(trimmed)
+	var normalized := _normalize_resource_path(trimmed)
+	if normalized != "" and normalized != trimmed:
+		candidates.append(normalized)
+	if normalized != "":
+		var global_norm := ProjectSettings.globalize_path(normalized)
+		if global_norm != normalized:
+			candidates.append(global_norm)
+	if trimmed != "" and !trimmed.begins_with("res://") and !trimmed.begins_with("user://") and !trimmed.is_absolute_path():
+		var res_candidate := "res://".path_join(trimmed)
+		if res_candidate != normalized:
+			candidates.append(res_candidate)
+		var global_res := ProjectSettings.globalize_path(res_candidate)
+		if global_res != res_candidate:
+			candidates.append(global_res)
+	var seen := {}
+	for candidate in candidates:
+		var path := candidate.strip_edges()
+		if path == "" or seen.has(path):
+			continue
+		seen[path] = true
+		var f := FileAccess.open(path, FileAccess.READ)
+		if f != null:
+			return f
+	return null
 
 func apply_tracklist_entry(entry: Dictionary) -> void:
 	if entry == null or entry.is_empty():
