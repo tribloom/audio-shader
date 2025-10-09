@@ -439,64 +439,64 @@ func _log_parsed_configuration(raw: PackedStringArray) -> void:
 			builder += raw[idx]
 		raw_line = builder
 	print("[ExportRenderer] Raw CLI args: %s" % raw_line)
-var summary := [
-["scene", args.get("scene", "scenes/AudioViz.tscn")],
-["features", args.get("features", "")],
-["waveform", args.get("waveform", "")],
-["fps", fps],
-["resolution", "%dx%d" % [width, height]],
-["save_jpg", save_jpg],
-["jpg_quality", jpg_quality],
-["out_dir", out_dir],
-["out_dir_fs", out_dir_fs],
-["tracklist_path", tracklist_path],
-["track_index", track_index],
-["track_index_specified", track_index_specified],
-["tracklist_inline_size", tracklist_inline.size()],
-["track_start_time", track_start_time],
-["track_end_time", track_end_time],
-["track_source_start_time", track_source_start_time],
-["track_source_end_time", track_source_end_time],
-]
+	var summary := [
+		["scene", args.get("scene", "scenes/AudioViz.tscn")],
+		["features", args.get("features", "")],
+		["waveform", args.get("waveform", "")],
+		["fps", fps],
+		["resolution", "%dx%d" % [width, height]],
+		["save_jpg", save_jpg],
+		["jpg_quality", jpg_quality],
+		["out_dir", out_dir],
+		["out_dir_fs", out_dir_fs],
+		["tracklist_path", tracklist_path],
+		["track_index", track_index],
+		["track_index_specified", track_index_specified],
+		["tracklist_inline_size", tracklist_inline.size()],
+		["track_start_time", track_start_time],
+		["track_end_time", track_end_time],
+		["track_source_start_time", track_source_start_time],
+		["track_source_end_time", track_source_end_time],
+	]
 	print("[ExportRenderer] Parsed configuration:")
 	for item in summary:
 		print("  %s: %s" % [item[0], item[1]])
 
 func _prepare_tracklist_override() -> void:
-selected_track_entry = {}
-tracklist_inline = PackedStringArray()
-track_start_time = 0.0
-track_end_time = -1.0
-track_source_start_time = 0.0
-track_source_end_time = -1.0
-if tracklist_path == "":
-return
+	selected_track_entry = {}
+	tracklist_inline = PackedStringArray()
+	track_start_time = 0.0
+	track_end_time = -1.0
+	track_source_start_time = 0.0
+	track_source_end_time = -1.0
+	if tracklist_path == "":
+		return
 
-var lines := _read_tracklist_lines(tracklist_path)
-if lines.is_empty():
-push_warning("Tracklist not found: %s" % tracklist_path)
-return
+	var lines := _read_tracklist_lines(tracklist_path)
+	if lines.is_empty():
+		push_warning("Tracklist not found: %s" % tracklist_path)
+		return
 
-var entries := _parse_tracklist_entries(lines)
-if entries.is_empty():
-push_warning("Tracklist has no valid entries: %s" % tracklist_path)
-return
+	var entries := _parse_tracklist_entries(lines)
+	if entries.is_empty():
+		push_warning("Tracklist has no valid entries: %s" % tracklist_path)
+		return
 
-var idx = clamp(track_index - 1, 0, entries.size() - 1)
-if track_index_specified and (idx != track_index - 1):
-push_warning("Track index %d is out of range. Using entry %d." % [track_index, idx + 1])
-selected_track_entry = entries[idx]
-track_source_start_time = float(selected_track_entry.get("seconds", 0.0))
-track_source_end_time = float(selected_track_entry.get("next_seconds", -1.0))
-track_start_time = track_source_start_time
-track_end_time = track_source_end_time
+	var idx = clamp(track_index - 1, 0, entries.size() - 1)
+	if track_index_specified and (idx != track_index - 1):
+		push_warning("Track index %d is out of range. Using entry %d." % [track_index, idx + 1])
+	selected_track_entry = entries[idx]
+	track_source_start_time = float(selected_track_entry.get("seconds", 0.0))
+	track_source_end_time = float(selected_track_entry.get("next_seconds", -1.0))
+	track_start_time = track_source_start_time
+	track_end_time = track_source_end_time
 
-if track_index_specified:
-var body := String(selected_track_entry.get("body", ""))
-var line := "0:00 " + body
-var inline := PackedStringArray()
-inline.append(line)
-tracklist_inline = inline
+	if track_index_specified:
+		var body := String(selected_track_entry.get("body", ""))
+		var line := "0:00 " + body
+		var inline := PackedStringArray()
+		inline.append(line)
+		tracklist_inline = inline
 
 func _read_tracklist_lines(path: String) -> PackedStringArray:
 	var lines := PackedStringArray()
@@ -682,11 +682,4 @@ func _has_property(obj: Object, prop: String) -> bool:
 	for item in obj.get_property_list():
 		if String(item.name) == prop:
 			return true
-	return false
-func _has_property(obj: Object, prop: String) -> bool:
-	if obj == null:
-			return false
-	for item in obj.get_property_list():
-			if String(item.name) == prop:
-					return true
 	return false
