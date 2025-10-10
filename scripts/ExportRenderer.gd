@@ -209,31 +209,36 @@ func _initialize() -> void:
 		else:
 			render_end_time = -1.0
 
-	total_duration_s = duration_s
+		total_duration_s = duration_s
 
-	DirAccess.make_dir_recursive_absolute(out_dir_fs)
+		var has_track_window := track_index_specified or render_start_override >= 0.0 or render_duration_override > 0.0
+		if track_start_time > 0.0:
+			has_track_window = true
 
-	# Deterministic frame loop
-	var frames_total := int(ceil(duration_s * float(fps)))
-	var using_offline_frames := false
-	var frame_start_idx := 0
-	if root_node.has_method("get_offline_frame_count"):
-		var offline_frames = int(root_node.call("get_offline_frame_count"))
-		if offline_frames > 0:
-			using_offline_frames = true
-			if track_index_specified:
-				frame_start_idx = _find_frame_index_for_time(track_start_time, offline_frames)
-				var target_end := track_end_time
-				if target_end <= track_start_time:
-					target_end = total_duration_s
-				var found_end := offline_frames
-				if target_end > track_start_time:
-					found_end = _find_frame_index_for_time(target_end, offline_frames)
-				var frame_end_idx := clampi(found_end, frame_start_idx, offline_frames)
-				frames_total = max(0, frame_end_idx - frame_start_idx)
-			else:
-				frame_start_idx = 0
-				frames_total = offline_frames
+		DirAccess.make_dir_recursive_absolute(out_dir_fs)
+
+		# Deterministic frame loop
+		var frames_total := int(ceil(duration_s * float(fps)))
+		var using_offline_frames := false
+		var frame_start_idx := 0
+		if root_node.has_method("get_offline_frame_count"):
+			var offline_frames = int(root_node.call("get_offline_frame_count"))
+			if offline_frames > 0:
+				using_offline_frames = true
+				if has_track_window:
+					frame_start_idx = _find_frame_index_for_time(track_start_time, offline_frames)
+					var target_end := track_end_time
+					if target_end <= track_start_time:
+						target_end = total_duration_s
+					var found_end := offline_frames
+					if target_end > track_start_time:
+						found_end = _find_frame_index_for_time(target_end, offline_frames)
+					var frame_end_idx := clampi(found_end, frame_start_idx, offline_frames)
+					frames_total = max(0, frame_end_idx - frame_start_idx)
+				else:
+					frame_start_idx = 0
+					frames_total = offline_frames
+
 	if frames_total <= 0:
 		push_warning("No frames to render (duration=%.3fs, fps=%d)." % [duration_s, fps])
 		quit()
@@ -246,7 +251,7 @@ func _initialize() -> void:
 		if using_offline_frames:
 			t = _get_time_for_frame_index(source_frame)
 		else:
-			if track_index_specified:
+			if has_track_window:
 				t = track_start_time + t
 		var should_log_frame := (local_frame == 0 or local_frame % 3600 == 0)
 		if !using_offline_frames:
@@ -258,10 +263,10 @@ func _initialize() -> void:
 				var frame_time = root_node.call("get_offline_time_for_frame", local_frame)
 				if typeof(frame_time) == TYPE_FLOAT and frame_time >= 0.0:
 					t = frame_time
-				if track_index_specified and t < track_start_time:
+				if has_track_window and t < track_start_time:
 					t = track_start_time
 
-		if track_index_specified and track_end_time > track_start_time and t >= track_end_time:
+		if has_track_window and track_end_time > track_start_time and t >= track_end_time:
 			break
 
 		if root_node.has_method("set_playhead"):
@@ -422,8 +427,18 @@ func _parse_args() -> void:
 					if parsed_start_time < 0.0:
 						parsed_start_time = _parse_seconds_value(start_time_val)
 					if parsed_start_time >= 0.0:
-						render_start_override = parsed_start_time
-						render_start_source = "--start-time"
+							render_start_override = parsed_start_time
+							render_start_source = "--start-time"
+			"--timestamp":
+				var ts_val := _sanitize_cli_path(value)
+				if ts_val != "":
+					var parsed_ts := _parse_timestamp_to_seconds(ts_val)
+					if parsed_ts < 0.0:
+						parsed_ts = _parse_seconds_value(ts_val)
+					if parsed_ts >= 0.0:
+							render_start_override = parsed_ts
+							render_start_source = "--timestamp (legacy)"
+							push_warning("--timestamp is deprecated; use --start or --start-time instead.")
 			"--duration":
 				var duration_val := _sanitize_cli_path(value)
 				if duration_val != "":
