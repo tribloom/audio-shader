@@ -177,8 +177,17 @@ func _initialize() -> void:
 			duration_s = max(track_end_time - track_start_time, 0.0)
 		total_duration_s = duration_s
 	else:
-		track_start_time = 0.0
-		track_end_time = duration_s
+		if render_start_override >= 0.0:
+			track_start_time = render_start_override
+		elif track_source_start_time > 0.0:
+			track_start_time = track_source_start_time
+		else:
+			track_start_time = 0.0
+		if track_end_time < track_start_time:
+			if duration_s > 0.0:
+				track_end_time = track_start_time + duration_s
+			else:
+				track_end_time = -1.0
 
 	if render_start_override >= 0.0:
 		track_source_start_time = render_start_override
@@ -196,15 +205,13 @@ func _initialize() -> void:
 	else:
 		if track_source_end_time > track_source_start_time:
 			render_end_time = track_source_end_time
-			if track_index_specified:
-				var span := track_source_end_time - track_source_start_time
-				if span > 0.0:
-					track_end_time = track_start_time + span
-					duration_s = span
-			else:
-				duration_s = track_end_time
+			var span := track_source_end_time - track_source_start_time
+			if span > 0.0:
+				track_end_time = track_start_time + span
+				duration_s = span
 		elif duration_s > 0.0 and track_source_start_time >= 0.0:
 			track_source_end_time = track_source_start_time + duration_s
+			track_end_time = track_start_time + duration_s
 			render_end_time = track_source_end_time
 		else:
 			render_end_time = -1.0
@@ -214,6 +221,16 @@ func _initialize() -> void:
 	var has_track_window: bool = track_index_specified or render_start_override >= 0.0 or render_duration_override > 0.0
 	if track_start_time > 0.0:
 		has_track_window = true
+
+	var window_offset := 0.0
+	if has_track_window:
+		window_offset = max(track_source_start_time, 0.0)
+	var relative_track_start := 0.0
+	if has_track_window:
+		relative_track_start = max(track_start_time - window_offset, 0.0)
+	var relative_track_end := -1.0
+	if has_track_window and track_end_time > track_start_time:
+		relative_track_end = max(track_end_time - window_offset, 0.0)
 
 	DirAccess.make_dir_recursive_absolute(out_dir_fs)
 
@@ -226,12 +243,12 @@ func _initialize() -> void:
 		if offline_frames > 0:
 			using_offline_frames = true
 			if has_track_window:
-				frame_start_idx = _find_frame_index_for_time(track_start_time, offline_frames)
-				var target_end: float = track_end_time
-				if target_end <= track_start_time:
+				frame_start_idx = _find_frame_index_for_time(relative_track_start, offline_frames)
+				var target_end: float = relative_track_end
+				if target_end <= relative_track_start:
 					target_end = total_duration_s
 				var found_end: int = offline_frames
-				if target_end > track_start_time:
+				if target_end > relative_track_start:
 					found_end = _find_frame_index_for_time(target_end, offline_frames)
 				var frame_end_idx: int = clampi(found_end, frame_start_idx, offline_frames)
 				frames_total = max(0, frame_end_idx - frame_start_idx)
@@ -266,7 +283,10 @@ func _initialize() -> void:
 				if has_track_window and t < track_start_time:
 					t = track_start_time
 
-		if has_track_window and track_end_time > track_start_time and t >= track_end_time:
+		if using_offline_frames:
+			if has_track_window and relative_track_end > relative_track_start and t >= relative_track_end:
+				break
+		elif has_track_window and track_end_time > track_start_time and t >= track_end_time:
 			break
 
 		if root_node.has_method("set_playhead"):
