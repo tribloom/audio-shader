@@ -471,9 +471,9 @@ func set_aspect(aspect: float) -> void:
 	_update_aspect()
 
 func set_playhead(t: float) -> void:
-		_offline_playhead = max(t, 0.0)
-		_last_play_pos = _offline_playhead
-		if _offline_features.size() > 0:
+	_offline_playhead = max(t, 0.0)
+	_last_play_pos = _offline_time_offset + _offline_playhead
+	if _offline_features.size() > 0:
 				var idx_time := 0.0
 				if _offline_last_index >= 0 and _offline_last_index < _offline_features.size():
 						idx_time = float(_offline_features[_offline_last_index].get("t", 0.0))
@@ -525,19 +525,19 @@ func load_features_csv(path: String, start_time: float = 0.0, end_time: float = 
 	band_columns.sort_custom(func(a, b):
 		return int(String(a).substr(1)) < int(String(b).substr(1)))
 
-	var window_start := max(start_time, 0.0)
-	var window_end := -1.0
+	var window_start: float = max(start_time, 0.0)
+	var window_end: float = -1.0
 	if end_time > 0.0 and end_time > window_start:
 		window_end = end_time
-	var use_window := window_start > 0.0 or window_end > 0.0
-	var cutoff_epsilon := 0.0001
+	var use_window: bool = window_start > 0.0 or window_end > 0.0
+	var cutoff_epsilon: float = 0.0001
 
 	var features: Array = []
 	var frame_map := {}
-	var prev_time := -1.0
-	var dt_accum := 0.0
-	var dt_count := 0
-	var last_time := 0.0
+	var prev_time: float = -1.0
+	var dt_accum: float = 0.0
+	var dt_count: int = 0
+	var last_time: float = 0.0
 	while !f.eof_reached():
 		var line := f.get_line()
 		if line.strip_edges() == "":
@@ -598,9 +598,9 @@ func load_features_csv(path: String, start_time: float = 0.0, end_time: float = 
 	_offline_frame_map = frame_map
 	_offline_last_index = 0
 	_offline_playhead = 0.0
-	_last_play_pos = 0.0
-	_debug_missing_offline_logged = false
 	_offline_time_offset = window_start if use_window else 0.0
+	_last_play_pos = _offline_time_offset
+	_debug_missing_offline_logged = false
 	offline_features_path = resolved_path
 
 	if dt_count > 0 and dt_accum > 0.0:
@@ -666,11 +666,11 @@ func load_waveform_binary(base_path: String, start_time: float = 0.0, end_time: 
 	bin_file.close()
 
 	offline_waveform_base = base_path
-	var window_start := max(start_time, 0.0)
-	var window_end := -1.0
+	var window_start: float = max(start_time, 0.0)
+	var window_end: float = -1.0
 	if end_time > 0.0 and end_time > window_start:
 		window_end = end_time
-	var use_window := window_start > 0.0 or window_end > 0.0
+	var use_window: bool = window_start > 0.0 or window_end > 0.0
 	var final_samples := samples
 	if use_window and _offline_wave_rate > 0.0 and samples.size() > 0:
 		var sr := _offline_wave_rate
@@ -913,12 +913,12 @@ func _process(dt: float) -> void:
 	_update_track_overlay(overlay_time)
 
 func _process_offline() -> void:
-	var overlay_time := _offline_playhead
+	var overlay_time := _offline_time_offset + _offline_playhead
+	_last_play_pos = overlay_time
 
 	if color_rect == null:
 		_update_track_overlay(overlay_time)
 		return
-
 	if _offline_features.is_empty():
 		_debug_note_missing_offline_data()
 		_update_track_overlay(overlay_time)
