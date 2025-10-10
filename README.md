@@ -27,3 +27,13 @@ godot4 --headless \
 ```
 
 The example above renders 24 seconds of output starting at the 13 minute 23 second mark.
+
+## Tracklist interaction
+
+When a tracklist is supplied, the renderer will automatically look up the entry that spans the requested start timestamp so that the correct shader and parameter overrides are applied. `--start` and `--start-time` are absolute offsets within the supplied tracklist and can be used with or without `--track`.
+
+* Use `--tracklist <path>` on its own to respect the timeline embedded in the file.
+* Add `--start` or `--start-time` to begin rendering mid-track; the renderer will seek to that absolute time.
+* Provide `--track <index>` to force a specific entry when you want to ignore timestamps; the renderer will still honour a start override if one is provided.
+
+The CLI log now reports which tracklist entry is active and the corresponding time window so the relationship between these flags is explicit.

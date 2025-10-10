@@ -471,9 +471,9 @@ func set_aspect(aspect: float) -> void:
 	_update_aspect()
 
 func set_playhead(t: float) -> void:
-		_offline_playhead = max(t, 0.0)
-		_last_play_pos = _offline_playhead
-		if _offline_features.size() > 0:
+	_offline_playhead = max(t, 0.0)
+	_last_play_pos = _offline_time_offset + _offline_playhead
+	if _offline_features.size() > 0:
 				var idx_time := 0.0
 				if _offline_last_index >= 0 and _offline_last_index < _offline_features.size():
 						idx_time = float(_offline_features[_offline_last_index].get("t", 0.0))
@@ -598,9 +598,9 @@ func load_features_csv(path: String, start_time: float = 0.0, end_time: float = 
 	_offline_frame_map = frame_map
 	_offline_last_index = 0
 	_offline_playhead = 0.0
-	_last_play_pos = 0.0
-	_debug_missing_offline_logged = false
 	_offline_time_offset = window_start if use_window else 0.0
+	_last_play_pos = _offline_time_offset
+	_debug_missing_offline_logged = false
 	offline_features_path = resolved_path
 
 	if dt_count > 0 and dt_accum > 0.0:
@@ -913,12 +913,12 @@ func _process(dt: float) -> void:
 	_update_track_overlay(overlay_time)
 
 func _process_offline() -> void:
-	var overlay_time := _offline_playhead
+	var overlay_time := _offline_time_offset + _offline_playhead
+	_last_play_pos = overlay_time
 
 	if color_rect == null:
 		_update_track_overlay(overlay_time)
 		return
-
 	if _offline_features.is_empty():
 		_debug_note_missing_offline_data()
 		_update_track_overlay(overlay_time)

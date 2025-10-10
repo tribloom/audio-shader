@@ -583,6 +583,10 @@ func _prepare_tracklist_override() -> void:
 	if track_index_specified and (idx != track_index - 1):
 		push_warning("Track index %d is out of range. Using entry %d." % [track_index, idx + 1])
 	selected_track_entry = entries[idx]
+	var entry_timestamp := String(selected_track_entry.get("timestamp", ""))
+	var entry_title := String(selected_track_entry.get("title", ""))
+	var entry_shader_name := String(selected_track_entry.get("shader", ""))
+	var entry_params = selected_track_entry.get("params", {})
 	var entry_start := float(selected_track_entry.get("seconds", 0.0))
 	var entry_end := float(selected_track_entry.get("next_seconds", -1.0))
 	if entry_end <= entry_start and selected_track_entry.has("duration_hint"):
@@ -597,6 +601,39 @@ func _prepare_tracklist_override() -> void:
 		track_source_end_time = track_source_start_time + render_duration_override
 	track_start_time = track_source_start_time
 	track_end_time = track_source_end_time
+	var entry_label := ""
+	if entry_timestamp != "" or entry_title != "":
+		entry_label = "("
+		if entry_timestamp != "":
+			entry_label += entry_timestamp
+			if entry_title != "":
+				entry_label += " "
+		if entry_title != "":
+			entry_label += entry_title
+		entry_label += ")"
+	var info_parts := []
+	if entry_shader_name != "":
+		info_parts.append("shader=%s" % entry_shader_name)
+	if entry_params is Dictionary and (entry_params as Dictionary).size() > 0:
+		info_parts.append("params=%s" % JSON.stringify(entry_params))
+	var info_suffix := ""
+	if info_parts.size() > 0:
+		info_suffix = " ["
+		for info_idx in range(info_parts.size()):
+			if info_idx > 0:
+				info_suffix += "; "
+			info_suffix += String(info_parts[info_idx])
+		info_suffix += "]"
+	var selection_line := "[ExportRenderer] Using tracklist entry %d" % (idx + 1)
+	if entry_label != "":
+		selection_line += " %s" % entry_label
+	selection_line += info_suffix
+	print(selection_line)
+	if track_source_start_time >= 0.0:
+		var end_label := "open"
+		if track_source_end_time > track_source_start_time:
+			end_label = "%.3fs" % track_source_end_time
+		print("[ExportRenderer] Track source window: %.3fs -> %s" % [track_source_start_time, end_label])
 
 	if track_index_specified and render_start_override < 0.0:
 		var body := String(selected_track_entry.get("body", ""))
