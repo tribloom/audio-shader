@@ -32,6 +32,11 @@ var track_start_time: float = 0.0
 var track_end_time: float = -1.0
 var track_source_start_time: float = 0.0
 var track_source_end_time: float = -1.0
+var render_start_override: float = -1.0
+var render_start_source: String = ""
+var render_duration_override: float = -1.0
+var render_start_time: float = -1.0
+var render_end_time: float = -1.0
 
 func _initialize() -> void:
 	_parse_args()
@@ -89,9 +94,11 @@ func _initialize() -> void:
 	var features_path: String = args.get("features", "")
 	var feature_window_start := 0.0
 	var feature_window_end := -1.0
-	if track_index_specified:
-		feature_window_start = track_source_start_time
+	if track_index_specified or render_start_override >= 0.0 or render_duration_override > 0.0:
+		feature_window_start = max(track_source_start_time, 0.0)
 		feature_window_end = track_source_end_time
+	render_start_time = track_source_start_time
+	render_end_time = track_source_end_time
 	if features_path != "" and root_node.has_method("load_features_csv"):
 		root_node.call("load_features_csv", features_path, feature_window_start, feature_window_end)
 	var waveform_path: String = args.get("waveform", "")
@@ -172,6 +179,37 @@ func _initialize() -> void:
 	else:
 		track_start_time = 0.0
 		track_end_time = duration_s
+
+	if render_start_override >= 0.0:
+		track_source_start_time = render_start_override
+		render_start_time = render_start_override
+	elif track_source_start_time >= 0.0:
+		render_start_time = track_source_start_time
+	else:
+		render_start_time = track_start_time
+
+	if render_duration_override > 0.0:
+		duration_s = render_duration_override
+		track_end_time = track_start_time + render_duration_override
+		track_source_end_time = track_source_start_time + render_duration_override
+		render_end_time = track_source_end_time
+	else:
+		if track_source_end_time > track_source_start_time:
+			render_end_time = track_source_end_time
+			if track_index_specified:
+				var span := track_source_end_time - track_source_start_time
+				if span > 0.0:
+					track_end_time = track_start_time + span
+					duration_s = span
+			else:
+				duration_s = track_end_time
+		elif duration_s > 0.0 and track_source_start_time >= 0.0:
+			track_source_end_time = track_source_start_time + duration_s
+			render_end_time = track_source_end_time
+		else:
+			render_end_time = -1.0
+
+	total_duration_s = duration_s
 
 	DirAccess.make_dir_recursive_absolute(out_dir_fs)
 
@@ -364,6 +402,34 @@ func _parse_args() -> void:
 				if track_val != "":
 					track_index = max(1, int(track_val))
 					track_index_specified = true
+			"--start":
+				var start_val := _sanitize_cli_path(value)
+				if start_val != "":
+					var parsed_start := _parse_seconds_value(start_val)
+					if parsed_start >= 0.0:
+						render_start_override = parsed_start
+						render_start_source = "--start (seconds)"
+					else:
+						var parsed_timestamp := _parse_timestamp_to_seconds(start_val)
+						if parsed_timestamp >= 0.0:
+							render_start_override = parsed_timestamp
+							render_start_source = "--start (timestamp)"
+							push_warning("--start-time should be used for timestamp values. Parsed %.3fs from '%s'." % [parsed_timestamp, start_val])
+			"--start-time":
+				var start_time_val := _sanitize_cli_path(value)
+				if start_time_val != "":
+					var parsed_start_time := _parse_timestamp_to_seconds(start_time_val)
+					if parsed_start_time < 0.0:
+						parsed_start_time = _parse_seconds_value(start_time_val)
+					if parsed_start_time >= 0.0:
+						render_start_override = parsed_start_time
+						render_start_source = "--start-time"
+			"--duration":
+				var duration_val := _sanitize_cli_path(value)
+				if duration_val != "":
+					var parsed_duration := _parse_duration_to_seconds(duration_val)
+					if parsed_duration > 0.0:
+						render_duration_override = parsed_duration
 			"--overlay":
 				var overlay_val := _sanitize_cli_path(value)
 				if overlay_val == "":
@@ -383,6 +449,10 @@ func _parse_args() -> void:
 	if pending_tracklist != "":
 		tracklist_path = pending_tracklist
 		_prepare_tracklist_override()
+	if render_start_override >= 0.0:
+		track_source_start_time = render_start_override
+	if render_duration_override > 0.0 and track_source_start_time >= 0.0:
+		track_source_end_time = track_source_start_time + render_duration_override
 	_log_parsed_configuration(raw)
 
 func _infer_duration(features_path: String) -> float:
@@ -471,9 +541,14 @@ func _log_parsed_configuration(raw: PackedStringArray) -> void:
 		["tracklist_inline_size", tracklist_inline.size()],
 		["track_start_time", track_start_time],
 		["track_end_time", track_end_time],
-		["track_source_start_time", track_source_start_time],
-		["track_source_end_time", track_source_end_time],
-	]
+			["track_source_start_time", track_source_start_time],
+			["track_source_end_time", track_source_end_time],
+			["render_start_override", render_start_override],
+			["render_start_source", render_start_source],
+			["render_duration_override", render_duration_override],
+			["render_start_time", render_start_time],
+			["render_end_time", render_end_time],
+		]
 	print("[ExportRenderer] Parsed configuration:")
 	for item in summary:
 		print("  %s: %s" % [item[0], item[1]])
@@ -499,15 +574,31 @@ func _prepare_tracklist_override() -> void:
 		return
 
 	var idx = clamp(track_index - 1, 0, entries.size() - 1)
+	if render_start_override >= 0.0:
+		var override_idx := _find_tracklist_entry_for_time(entries, render_start_override)
+		if override_idx >= 0:
+			idx = override_idx
+		else:
+			push_warning("No tracklist entry found for start time %.3fs. Using entry %d." % [render_start_override, idx + 1])
 	if track_index_specified and (idx != track_index - 1):
 		push_warning("Track index %d is out of range. Using entry %d." % [track_index, idx + 1])
 	selected_track_entry = entries[idx]
-	track_source_start_time = float(selected_track_entry.get("seconds", 0.0))
-	track_source_end_time = float(selected_track_entry.get("next_seconds", -1.0))
+	var entry_start := float(selected_track_entry.get("seconds", 0.0))
+	var entry_end := float(selected_track_entry.get("next_seconds", -1.0))
+	if entry_end <= entry_start and selected_track_entry.has("duration_hint"):
+		var hint_span := float(selected_track_entry.get("duration_hint", -1.0))
+		if hint_span > 0.0:
+			entry_end = entry_start + hint_span
+	track_source_start_time = entry_start
+	track_source_end_time = entry_end
+	if render_start_override >= 0.0:
+		track_source_start_time = render_start_override
+	if render_duration_override > 0.0 and track_source_start_time >= 0.0:
+		track_source_end_time = track_source_start_time + render_duration_override
 	track_start_time = track_source_start_time
 	track_end_time = track_source_end_time
 
-	if track_index_specified:
+	if track_index_specified and render_start_override < 0.0:
 		var body := String(selected_track_entry.get("body", ""))
 		var line := "0:00 " + body
 		var inline := PackedStringArray()
@@ -604,27 +695,68 @@ func _parse_tracklist_entries(lines: PackedStringArray) -> Array:
 		current["next_seconds"] = next_sec
 	return out
 
+func _find_tracklist_entry_for_time(entries: Array, target_time: float) -> int:
+	if target_time < 0.0:
+		return -1
+	var epsilon := 0.0005
+	var last_valid := -1
+	for i in range(entries.size()):
+		var entry: Dictionary = entries[i]
+		var start := float(entry.get("seconds", -1.0))
+		if start < 0.0:
+			continue
+		var end := float(entry.get("next_seconds", -1.0))
+		if end <= start:
+			var hint_val := float(entry.get("duration_hint", -1.0))
+			if hint_val > 0.0:
+				end = start + hint_val
+		if end > start:
+			if target_time + epsilon < start:
+				if last_valid >= 0:
+					return last_valid
+				return i
+			if target_time <= end + epsilon:
+				return i
+		last_valid = i
+	return last_valid
+
 func _parse_timestamp_to_seconds(ts: String) -> float:
-	var parts := ts.split(":")
-	if parts.is_empty():
+	var trimmed := ts.strip_edges()
+	if trimmed == "":
+		return -1.0
+	if trimmed.find(":") < 0:
+		var numeric := trimmed.to_float()
+		if numeric < 0.0:
+			return -1.0
+		return numeric
+	var parts := trimmed.split(":")
+	if parts.size() < 2 or parts.size() > 3:
 		return -1.0
 	for i in range(parts.size()):
 		parts[i] = String(parts[i]).strip_edges()
-	var h := 0
-	var m := 0
-	var s := 0
 	if parts.size() == 2:
-		m = int(parts[0])
-		s = int(parts[1])
-	elif parts.size() == 3:
-		h = int(parts[0])
-		m = int(parts[1])
-		s = int(parts[2])
-	else:
+		var minutes := int(parts[0])
+		var seconds := parts[1].to_float()
+		if minutes < 0 or seconds < 0.0 or seconds >= 60.0:
+			return -1.0
+		return float(minutes * 60) + seconds
+	var hours := int(parts[0])
+	var minutes := int(parts[1])
+	var seconds := parts[2].to_float()
+	if hours < 0 or minutes < 0 or minutes >= 60 or seconds < 0.0 or seconds >= 60.0:
 		return -1.0
-	if m < 0 or s < 0 or s >= 60:
+	return float(hours * 3600 + minutes * 60) + seconds
+
+func _parse_seconds_value(text: String) -> float:
+	var trimmed := text.strip_edges()
+	if trimmed == "":
 		return -1.0
-	return float(h * 3600 + m * 60 + s)
+	if trimmed.find(":") >= 0:
+		return -1.0
+	var val := trimmed.to_float()
+	if val < 0.0:
+		return -1.0
+	return val
 
 func _parse_duration_to_seconds(text: String) -> float:
 	if text == "":
