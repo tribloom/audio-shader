@@ -209,35 +209,35 @@ func _initialize() -> void:
 		else:
 			render_end_time = -1.0
 
-		total_duration_s = duration_s
+	total_duration_s = duration_s
 
-		var has_track_window := track_index_specified or render_start_override >= 0.0 or render_duration_override > 0.0
-		if track_start_time > 0.0:
-			has_track_window = true
+	var has_track_window: bool = track_index_specified or render_start_override >= 0.0 or render_duration_override > 0.0
+	if track_start_time > 0.0:
+		has_track_window = true
 
-		DirAccess.make_dir_recursive_absolute(out_dir_fs)
+	DirAccess.make_dir_recursive_absolute(out_dir_fs)
 
-		# Deterministic frame loop
-		var frames_total := int(ceil(duration_s * float(fps)))
-		var using_offline_frames := false
-		var frame_start_idx := 0
-		if root_node.has_method("get_offline_frame_count"):
-			var offline_frames = int(root_node.call("get_offline_frame_count"))
-			if offline_frames > 0:
-				using_offline_frames = true
-				if has_track_window:
-					frame_start_idx = _find_frame_index_for_time(track_start_time, offline_frames)
-					var target_end := track_end_time
-					if target_end <= track_start_time:
-						target_end = total_duration_s
-					var found_end := offline_frames
-					if target_end > track_start_time:
-						found_end = _find_frame_index_for_time(target_end, offline_frames)
-					var frame_end_idx := clampi(found_end, frame_start_idx, offline_frames)
-					frames_total = max(0, frame_end_idx - frame_start_idx)
-				else:
-					frame_start_idx = 0
-					frames_total = offline_frames
+	# Deterministic frame loop
+	var frames_total: int = int(ceil(duration_s * float(fps)))
+	var using_offline_frames: bool = false
+	var frame_start_idx: int = 0
+	if root_node.has_method("get_offline_frame_count"):
+		var offline_frames: int = int(root_node.call("get_offline_frame_count"))
+		if offline_frames > 0:
+			using_offline_frames = true
+			if has_track_window:
+				frame_start_idx = _find_frame_index_for_time(track_start_time, offline_frames)
+				var target_end: float = track_end_time
+				if target_end <= track_start_time:
+					target_end = total_duration_s
+				var found_end: int = offline_frames
+				if target_end > track_start_time:
+					found_end = _find_frame_index_for_time(target_end, offline_frames)
+				var frame_end_idx: int = clampi(found_end, frame_start_idx, offline_frames)
+				frames_total = max(0, frame_end_idx - frame_start_idx)
+			else:
+				frame_start_idx = 0
+				frames_total = offline_frames
 
 	if frames_total <= 0:
 		push_warning("No frames to render (duration=%.3fs, fps=%d)." % [duration_s, fps])
@@ -429,16 +429,6 @@ func _parse_args() -> void:
 					if parsed_start_time >= 0.0:
 							render_start_override = parsed_start_time
 							render_start_source = "--start-time"
-			"--timestamp":
-				var ts_val := _sanitize_cli_path(value)
-				if ts_val != "":
-					var parsed_ts := _parse_timestamp_to_seconds(ts_val)
-					if parsed_ts < 0.0:
-						parsed_ts = _parse_seconds_value(ts_val)
-					if parsed_ts >= 0.0:
-							render_start_override = parsed_ts
-							render_start_source = "--timestamp (legacy)"
-							push_warning("--timestamp is deprecated; use --start or --start-time instead.")
 			"--duration":
 				var duration_val := _sanitize_cli_path(value)
 				if duration_val != "":
