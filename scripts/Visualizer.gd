@@ -63,7 +63,11 @@ extends Node2D
 	"EXTRA_DEBUG_PIXEL_FFT",
 	"AUDIO_REAKTIVE",
 	"PARALLAX_GALAXY",
-	"TWISTED_TORUS"
+	"TWISTED_TORUS",
+	"ABSTRACT_GLASS_FIELD",
+	"SPARKLE_AND_LINES",
+	"TRIPLE_WAVE_LINES",
+	
 	
 ]      # e.g. ["ARCS", "STARFIELD"]
 @export var extra_shader_materials: Array[ShaderMaterial] = []  # same length as names
