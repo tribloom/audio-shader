@@ -1,4 +1,4 @@
-[gd_scene load_steps=69 format=3 uid="uid://cg7hpc6lknr54"]
+[gd_scene load_steps=131 format=3 uid="uid://cg7hpc6lknr54"]
 
 [ext_resource type="Script" uid="uid://2s76n2g5iq3j" path="res://scripts/Visualizer.gd" id="1"]
 [ext_resource type="Shader" uid="uid://ckwpxocs2mtyv" path="res://shaders/hexagone.gdshader" id="2_lvnau"]
@@ -34,7 +34,38 @@
 [ext_resource type="Shader" uid="uid://bahscpgru7wdq" path="res://shaders/universe_alt.gdshader" id="20_4uq58"]
 [ext_resource type="Shader" uid="uid://dft0keepyxa7q" path="res://shaders/complicating.gdshader" id="20_mu0x3"]
 [ext_resource type="Shader" uid="uid://irs5gq7lc8bw" path="res://shaders/bubble_nebula.gdshader" id="21_qyxps"]
+[ext_resource type="Shader" uid="uid://c2bo1o1ftumhx" path="res://shaders/sine_puke.gdshader" id="21_yyi6w"]
+[ext_resource type="Shader" uid="uid://crumgxiuofw6f" path="res://shaders/fuzzy_brain.gdshader" id="22_knj1e"]
+[ext_resource type="Shader" uid="uid://ck4fkh0rlod4q" path="res://shaders/smith_cells.gdshader" id="23_6n1x7"]
+[ext_resource type="Shader" uid="uid://bg4l14wnj51xh" path="res://shaders/rainbow_turbulence.gdshader" id="24_153ek"]
+[ext_resource type="Shader" uid="uid://b6uyq14ho6uo7" path="res://shaders/light_show.gdshader" id="25_kwimc"]
 [ext_resource type="AudioStream" uid="uid://qgmib8r5mcjx" path="res://Lost in You.wav" id="26_4uq58"]
+[ext_resource type="Shader" uid="uid://dscp473j0ofqk" path="res://shaders/polar_aurora.gdshader" id="26_fqwkm"]
+[ext_resource type="Shader" uid="uid://bmaskhwo3g4ch" path="res://shaders/radial_spokes.gdshader" id="27_kbp6i"]
+[ext_resource type="Shader" uid="uid://ctgheb8da00sq" path="res://shaders/neon_rings.gdshader" id="28_meos5"]
+[ext_resource type="Shader" uid="uid://glg7ygj1jl2x" path="res://shaders/flow_field_dots.gdshader" id="29_oq7wg"]
+[ext_resource type="Shader" uid="uid://gmq2cwor4pwk" path="res://shaders/lissajous_weave.gdshader" id="30_f17lq"]
+[ext_resource type="Shader" uid="uid://yd4x85tbcn2n" path="res://shaders/tunnel_stripes.gdshader" id="31_og0j4"]
+[ext_resource type="Shader" uid="uid://bxp2klfvq4k2d" path="res://shaders/hex_bloom.gdshader" id="32_ir4bg"]
+[ext_resource type="Shader" uid="uid://bubsxjgnk66x7" path="res://shaders/soft_ripples.gdshader" id="33_2og57"]
+[ext_resource type="Shader" uid="uid://dr30r6kf6dddg" path="res://shaders/neon_grid_drift.gdshader" id="34_kbp6i"]
+[ext_resource type="Shader" uid="uid://mdhoshn3jbho" path="res://shaders/chromatic_tunnel.gdshader" id="35_meos5"]
+[ext_resource type="Shader" uid="uid://btdnk5bn47ck3" path="res://shaders/pulse_matrix.gdshader" id="36_oq7wg"]
+[ext_resource type="Shader" uid="uid://tilnvi2gfx2g" path="res://shaders/acid_bloom.gdshader" id="37_f17lq"]
+[ext_resource type="Shader" uid="uid://baheqncn1qufj" path="res://shaders/fractal_drive.gdshader" id="38_og0j4"]
+[ext_resource type="Shader" uid="uid://umftxnjeu6y4" path="res://shaders/circuit_pulse.gdshader" id="39_ir4bg"]
+[ext_resource type="Shader" uid="uid://bkwbwaph25ehw" path="res://shaders/spectral_burst.gdshader" id="40_2og57"]
+[ext_resource type="Shader" uid="uid://btafevy2nus5v" path="res://shaders/voltage_surge.gdshader" id="41_swuvo"]
+[ext_resource type="Shader" uid="uid://dhqblm8gtkk8e" path="res://shaders/metalstorm.gdshader" id="42_a3qwx"]
+[ext_resource type="Shader" uid="uid://di65ru5wqbnsu" path="res://shaders/plasma_helix.gdshader" id="43_ii33l"]
+[ext_resource type="Shader" uid="uid://b2xj2wu72lxg7" path="res://shaders/aurora_descent.gdshader" id="44_0k0t4"]
+[ext_resource type="Shader" uid="uid://dlkbecffxqt67" path="res://shaders/echoform_fade.gdshader" id="45_hbxid"]
+[ext_resource type="Shader" uid="uid://bxvt1rfudwfyc" path="res://shaders/barburst360.gdshader" id="46_nbxlb"]
+[ext_resource type="Shader" uid="uid://cg1pat33q6rmo" path="res://shaders/beat_kaleido.gdshader" id="47_y1ht4"]
+[ext_resource type="Shader" uid="uid://cy6tp3s4nlart" path="res://shaders/spiral_runner.gdshader" id="48_fecf4"]
+[ext_resource type="Shader" uid="uid://g34hhomw7nuo" path="res://shaders/shock_particles.gdshader" id="49_08xhs"]
+[ext_resource type="Shader" uid="uid://uj1ps8whlbx8" path="res://shaders/extra_debug_pixel_fft.gdshader" id="50_b7mur"]
+[ext_resource type="Shader" uid="uid://bevl43msuodo3" path="res://shaders/audio_reaktive.gdshader" id="51_bmp84"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_tqmyl"]
 shader = ExtResource("2_lvnau")
@@ -43,11 +74,11 @@ shader_parameter/base_spin = 0.4
 shader_parameter/zoom = 1.0
 shader_parameter/hex_scale = 0.1
 shader_parameter/layer_scale = 5.0
-shader_parameter/brightness = 1.6
-shader_parameter/vignette = 2.0
+shader_parameter/brightness = 0.5
+shader_parameter/vignette = 0.0
 shader_parameter/bob_amp = 20.0
 shader_parameter/use_audio = true
-shader_parameter/audio_drive = 1.0
+shader_parameter/audio_drive = 0.33
 shader_parameter/audio_level = 0.0
 shader_parameter/audio_bass = 0.0
 shader_parameter/audio_treble = 0.0
@@ -62,9 +93,9 @@ shader_parameter/aspect = 1.7777
 shader_parameter/bar_count = 64
 shader_parameter/arc_count = 5
 shader_parameter/speed = 0.6
-shader_parameter/curvature = 0.32
-shader_parameter/warp_amp = 5.0
-shader_parameter/warp_freq = 5.0
+shader_parameter/curvature = 0.0
+shader_parameter/warp_amp = 0.5
+shader_parameter/warp_freq = 2.2
 shader_parameter/width_base = 95.0
 shader_parameter/glow = 1.25
 shader_parameter/gamma_fix = 0.9
@@ -82,7 +113,7 @@ shader_parameter/gain_mid = 1.2
 shader_parameter/gain_treble = 1.75
 shader_parameter/band_gamma = 0.85
 shader_parameter/highlight_all = true
-shader_parameter/highlight_thresh = 0.42
+shader_parameter/highlight_thresh = 0.65
 shader_parameter/highlight_blend = 0.85
 shader_parameter/highlight_boost = 0.35
 shader_parameter/bass_color = Vector3(1, 0.22, 0.15)
@@ -112,10 +143,10 @@ shader_parameter/pulse_width = 0.12
 shader_parameter/pulse_gain = 7.0
 shader_parameter/pulse_gate = 0.1
 shader_parameter/pulse_knee = 0.1
-shader_parameter/tint_strength = 1.75
+shader_parameter/tint_strength = 10.0
 shader_parameter/white_boost = 1.4
 shader_parameter/center_radius = 0.4
-shader_parameter/show_ring = true
+shader_parameter/show_ring = false
 shader_parameter/ring_radius = 0.98
 shader_parameter/ring_size = 0.022
 shader_parameter/ring_glow = 0.8
@@ -182,7 +213,7 @@ shader_parameter/glow = 0.9
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_0a5nj"]
 shader = ExtResource("5_mpre3")
-shader_parameter/use_audio = false
+shader_parameter/use_audio = true
 shader_parameter/u_bass = 0.18
 shader_parameter/u_mid = 0.38
 shader_parameter/u_high = 0.75
@@ -241,7 +272,6 @@ shader = ExtResource("12_4uq58")
 shader_parameter/audio_enabled = true
 shader_parameter/bar_count = 64
 shader_parameter/audio_gain = 1.0
-shader_parameter/color_mix = 0.25
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_kwimc"]
 shader = ExtResource("13_5h2o6")
@@ -347,15 +377,19 @@ shader_parameter/ring_gain = 0.25
 shader = ExtResource("19_x3pyr")
 shader_parameter/wave_gain = 4.0
 shader_parameter/use_true_waveform = true
-shader_parameter/spec_row_v = 0.5
+shader_parameter/spec_row_v = 0.125
 shader_parameter/use_log_freq_map = true
 shader_parameter/log_k = 0.75
 shader_parameter/wave_head_norm = 0.0
 shader_parameter/wave_history_span = 1.0
-shader_parameter/wave_amp = 3.0
+shader_parameter/wave_amp = 1.0
 shader_parameter/wave_thickness = 0.03
-shader_parameter/grad_val = 0.5
+shader_parameter/grad_val = 0.8
 shader_parameter/aspect = 1.77777
+shader_parameter/view_flat = true
+shader_parameter/enable_rotate = false
+shader_parameter/rotate_speed = 0.35
+shader_parameter/rotate_manual = 0.0
 shader_parameter/color1 = Color(0.25, 0.625, 0.625, 1)
 shader_parameter/color2 = Color(0.25, 0.25, 1, 1)
 shader_parameter/color3 = Color(1, 0.25, 0.25, 1)
@@ -365,31 +399,380 @@ shader = ExtResource("20_mu0x3")
 shader_parameter/time_scale = 1.0
 shader_parameter/aspect = 1.77778
 shader_parameter/p_step = Vector2(0.0025, 0.0025)
-shader_parameter/time_drive_mode = 1
+shader_parameter/time_drive_mode = 2
 shader_parameter/time_drive_const = 1.0
 shader_parameter/kick = 0.0
 shader_parameter/spectrum_bands = 64
 shader_parameter/spectrum_lo = 0.0
 shader_parameter/spectrum_hi = 1.0
-shader_parameter/spectrum_gain = 1.0
+shader_parameter/spectrum_gain = 0.005
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_fqwkm"]
+shader = ExtResource("21_yyi6w")
+shader_parameter/enable_audio = true
+shader_parameter/kick_env = 0.0
+shader_parameter/bass_env = 0.0
+shader_parameter/mids_env = 0.0
+shader_parameter/highs_env = 0.0
+shader_parameter/volume_env = -1.0
+shader_parameter/bar_count = 0
+shader_parameter/flow_speed = 1.0
+shader_parameter/flow_min = 0.6
+shader_parameter/flow_max = 2.0
+shader_parameter/flow_curve = 25.0
+shader_parameter/audio_hue_nm = 6.0
+shader_parameter/audio_exposure = 0.06
+shader_parameter/audio_zoom = 0.015
+shader_parameter/audio_sat = 0.12
+shader_parameter/sparkle_amount = 0.02
+shader_parameter/gamma_correction = 2.2
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_kbp6i"]
+shader = ExtResource("22_knj1e")
+shader_parameter/enable_audio = true
+shader_parameter/volume_env = -1.0
+shader_parameter/bar_count = 0
+shader_parameter/flow_speed = 1.0
+shader_parameter/flow_min = 0.6
+shader_parameter/flow_max = 2.0
+shader_parameter/flow_curve = 10.0
+shader_parameter/scale = 7.0
+shader_parameter/gamma_correction = 1.2
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_meos5"]
+shader = ExtResource("23_6n1x7")
+shader_parameter/enable_audio = true
+shader_parameter/bar_count = 64
+shader_parameter/audio_dot_size = 5.0
+shader_parameter/audio_dot_brightness = 50.0
+shader_parameter/rep = 32.0
+shader_parameter/over = 4.0
+shader_parameter/use_aces = true
+shader_parameter/use_srgb = false
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_oq7wg"]
+shader = ExtResource("24_153ek")
+shader_parameter/aspect = 1.7778
+shader_parameter/scale = 0.75
+shader_parameter/bass_scale = 1.0
+shader_parameter/mid_scale = 0.35
+shader_parameter/high_scale = 0.05
+shader_parameter/audio_enabled = true
+shader_parameter/bar_count = 64
+shader_parameter/audio_gain = 1.0
+shader_parameter/color_mix = 0.25
+shader_parameter/rm_iterations = 82
+shader_parameter/rm_fudge = 0.8
+shader_parameter/rm_intersection_precision = 0.001
+shader_parameter/rm_max_dist = 20.0
+shader_parameter/focal_length = 5.0
+shader_parameter/cam_pos_x = 0.0
+shader_parameter/cam_pos_y = -10.0
+shader_parameter/cam_pos_z = -10.0
+shader_parameter/cam_tar_x = 0.0
+shader_parameter/cam_tar_y = 0.0
+shader_parameter/cam_tar_z = 0.0
+shader_parameter/cam_up_x = 0.0
+shader_parameter/cam_up_y = 0.0
+shader_parameter/cam_up_z = -1.0
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_f17lq"]
+shader = ExtResource("25_kwimc")
+shader_parameter/audio_enabled = true
+shader_parameter/bar_count = 64
+shader_parameter/audio_gain = 1.0
+shader_parameter/aspect = 1.7778
+shader_parameter/base_brightness = 1.1
+shader_parameter/glow_size = 0.018
+shader_parameter/pulse_amount = 0.28
+shader_parameter/head_radius = 0.28
+shader_parameter/sweep_rate = 0.55
+shader_parameter/tunnel_rate = 1.25
+shader_parameter/tunnel_depth = 0.16
+shader_parameter/lift = 0.02
+shader_parameter/hands = 2
+shader_parameter/fingers_per_hand = 5
+shader_parameter/finger_spread = 0.05
+shader_parameter/hand_width = 0.9
+shader_parameter/trail_samples = 20
+shader_parameter/trail_spread = 0.45
+shader_parameter/trail_decay = 0.85
+shader_parameter/tap_bias = 2.2
+shader_parameter/micro_jitter = 0.01
+shader_parameter/stretch_gain = 0.015
+shader_parameter/baton_arc_bias = 0.25
+shader_parameter/seed = 123.0
+shader_parameter/col_a = Vector3(0.1, 0.85, 1)
+shader_parameter/col_b = Vector3(1, 0.25, 0.65)
+shader_parameter/col_c = Vector3(0.75, 0.95, 0.3)
+shader_parameter/col_d = Vector3(0.6, 0.5, 1)
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_swuvo"]
+shader = ExtResource("26_fqwkm")
+shader_parameter/aspect = 0.0
+shader_parameter/audio_enabled = true
+shader_parameter/bar_count = 64
+shader_parameter/audio_gain = 1.0
+shader_parameter/aurora_scale = 5.0
+shader_parameter/base_speed = 0.12
+shader_parameter/glow = 1.3
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_a3qwx"]
+shader = ExtResource("27_kbp6i")
+shader_parameter/aspect = 1.778
+shader_parameter/audio_enabled = true
+shader_parameter/bar_count = 64
+shader_parameter/audio_gain = 0.15
+shader_parameter/spokes = 64
+shader_parameter/base_thickness = 0.006
+shader_parameter/spin = 0.25
+shader_parameter/spokes_audio_level = 1.0
+shader_parameter/spokes_gate_lo = 0.08
+shader_parameter/spokes_gate_hi = 0.22
+shader_parameter/spokes_thicken = 2.6
+shader_parameter/spokes_glow = 0.4
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_ii33l"]
+shader = ExtResource("28_meos5")
+shader_parameter/aspect = 0.0
+shader_parameter/audio_enabled = true
+shader_parameter/bar_count = 64
+shader_parameter/audio_gain = 0.15
+shader_parameter/ring_density = 14.0
+shader_parameter/base_width = 0.025
+shader_parameter/drift = 0.15
+shader_parameter/breathe_amp = 0.12
+shader_parameter/breathe_speed = 0.35
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_0k0t4"]
+shader = ExtResource("29_oq7wg")
+shader_parameter/aspect = 0.0
+shader_parameter/audio_enabled = true
+shader_parameter/bar_count = 64
+shader_parameter/audio_gain = 1.0
+shader_parameter/density = 40.0
+shader_parameter/base_speed = 0.08
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_hbxid"]
+shader = ExtResource("30_f17lq")
+shader_parameter/aspect = 0.0
+shader_parameter/audio_enabled = true
+shader_parameter/bar_count = 64
+shader_parameter/audio_gain = 1.0
+shader_parameter/base_thick = 0.008
+shader_parameter/freq_x = 3.0
+shader_parameter/freq_y = 2.0
+shader_parameter/drift = 0.25
+shader_parameter/bass_lo = 0.02
+shader_parameter/bass_hi = 0.2
+shader_parameter/treb_lo = 0.7
+shader_parameter/treb_hi = 0.95
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_nbxlb"]
+shader = ExtResource("31_og0j4")
+shader_parameter/aspect = 0.0
+shader_parameter/audio_enabled = true
+shader_parameter/bar_count = 64
+shader_parameter/audio_gain = 0.1
+shader_parameter/base_speed = 0.6
+shader_parameter/stripe_density = 8.0
+shader_parameter/vignette = 1.4
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_y1ht4"]
+shader = ExtResource("32_ir4bg")
+shader_parameter/aspect = 0.0
+shader_parameter/audio_enabled = true
+shader_parameter/bar_count = 64
+shader_parameter/audio_gain = 0.15
+shader_parameter/grid_scale = 6.0
+shader_parameter/base_width = 0.015
+shader_parameter/cell_deform = 0.08
+shader_parameter/cell_rotate = 0.25
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_fecf4"]
+shader = ExtResource("33_2og57")
+shader_parameter/aspect = 0.0
+shader_parameter/audio_enabled = true
+shader_parameter/bar_count = 64
+shader_parameter/audio_gain = 1.0
+shader_parameter/base_amp = 0.35
+shader_parameter/freq = 8.0
+shader_parameter/drift = 0.12
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_og0j4"]
+shader = ExtResource("34_kbp6i")
+shader_parameter/audio_enabled = false
+shader_parameter/bar_count = 64
+shader_parameter/audio_gain = 1.0
+shader_parameter/aspect = 1.0
+shader_parameter/color_line = Vector3(0, 1, 1)
+shader_parameter/color_bg = Vector3(0, 0, 0)
+shader_parameter/grid_scale = 8.0
+shader_parameter/line_thickness = 0.015
+shader_parameter/glow = 0.6
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_ir4bg"]
+shader = ExtResource("35_meos5")
+shader_parameter/audio_enabled = true
+shader_parameter/bar_count = 64
+shader_parameter/audio_gain = 1.0
+shader_parameter/aspect = 1.778
+shader_parameter/spin_speed = 0.25
+shader_parameter/ring_density = 6.0
+shader_parameter/aberration = 0.012
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_2og57"]
+shader = ExtResource("36_oq7wg")
+shader_parameter/audio_enabled = true
+shader_parameter/bar_count = 64
+shader_parameter/audio_gain = 1.0
+shader_parameter/aspect = 1.0
+shader_parameter/cell = 12.0
+shader_parameter/thickness = 0.12
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_08xhs"]
+shader = ExtResource("37_f17lq")
+shader_parameter/audio_enabled = true
+shader_parameter/bar_count = 64
+shader_parameter/audio_gain = 1.0
+shader_parameter/aspect = 1.0
+shader_parameter/color_center = Vector3(0.7, 1, 0.2)
+shader_parameter/color_ring = Vector3(1, 0.8, 0.3)
+shader_parameter/density = 8.0
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_b7mur"]
+shader = ExtResource("38_og0j4")
+shader_parameter/audio_enabled = true
+shader_parameter/bar_count = 64
+shader_parameter/audio_gain = 1.0
+shader_parameter/aspect = 1.0
+shader_parameter/iter_gain = 1.25
+shader_parameter/zoom = 1.2
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_bmp84"]
+shader = ExtResource("39_ir4bg")
+shader_parameter/audio_enabled = true
+shader_parameter/bar_count = 64
+shader_parameter/audio_gain = 1.0
+shader_parameter/aspect = 1.0
+shader_parameter/wiring_scale = 10.0
+shader_parameter/spark_chance = 0.5
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_o4jmb"]
+shader = ExtResource("40_2og57")
+shader_parameter/audio_enabled = true
+shader_parameter/bar_count = 64
+shader_parameter/audio_gain = 1.0
+shader_parameter/aspect = 1.0
+shader_parameter/density = 7.0
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_w3kxe"]
+shader = ExtResource("41_swuvo")
+shader_parameter/audio_enabled = true
+shader_parameter/bar_count = 64
+shader_parameter/audio_gain = 1.0
+shader_parameter/aspect = 1.0
+shader_parameter/bolt_freq = 8.0
+shader_parameter/thickness = 0.035
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_kwhl1"]
+shader = ExtResource("42_a3qwx")
+shader_parameter/audio_enabled = true
+shader_parameter/bar_count = 64
+shader_parameter/audio_gain = 1.0
+shader_parameter/aspect = 1.0
+shader_parameter/swirl = 1.2
+shader_parameter/density = 80.0
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_gxkjj"]
+shader = ExtResource("43_ii33l")
+shader_parameter/audio_enabled = true
+shader_parameter/bar_count = 64
+shader_parameter/audio_gain = 0.15
+shader_parameter/aspect = 1.0
+shader_parameter/twist = 3.0
+shader_parameter/thickness = 0.04
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_4y6ch"]
+shader = ExtResource("44_0k0t4")
+shader_parameter/audio_enabled = true
+shader_parameter/bar_count = 64
+shader_parameter/audio_gain = 3.0
+shader_parameter/aspect = 1.0
+shader_parameter/fall = 0.25
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_jfxei"]
+shader = ExtResource("45_hbxid")
+shader_parameter/audio_enabled = true
+shader_parameter/bar_count = 64
+shader_parameter/audio_gain = 1.0
+shader_parameter/aspect = 1.0
+shader_parameter/decay = 0.85
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_t154n"]
+shader = ExtResource("46_nbxlb")
+shader_parameter/audio_enabled = true
+shader_parameter/bar_count = 64
+shader_parameter/audio_gain = 1.0
+shader_parameter/aspect = 1.0
+shader_parameter/inner_radius = 0.18
+shader_parameter/bar_len = 0.55
+shader_parameter/blur = 0.012
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_wdjow"]
+shader = ExtResource("47_y1ht4")
+shader_parameter/audio_enabled = true
+shader_parameter/bar_count = 64
+shader_parameter/audio_gain = 2.8
+shader_parameter/aspect = 1.0
+shader_parameter/cell_scale = 6.0
+shader_parameter/kick_flash = 1.2
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_al3y2"]
+shader = ExtResource("48_fecf4")
+shader_parameter/audio_enabled = true
+shader_parameter/bar_count = 64
+shader_parameter/audio_gain = 3.2
+shader_parameter/aspect = 1.0
+shader_parameter/arms = 3.0
+shader_parameter/thickness = 0.035
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_bdrea"]
+shader = ExtResource("49_08xhs")
+shader_parameter/audio_enabled = true
+shader_parameter/bar_count = 64
+shader_parameter/audio_gain = 3.0
+shader_parameter/aspect = 1.0
+shader_parameter/density = 140.0
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_fm6wb"]
+shader = ExtResource("50_b7mur")
+shader_parameter/rect_size = Vector2(1920, 1080)
+shader_parameter/rect_pos = Vector2(0, 0)
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_kytdp"]
+shader = ExtResource("51_bmp84")
+shader_parameter/time_scale = 1.0
+shader_parameter/spectrum_row = 0.25
+shader_parameter/spectrum_uvs = Vector4(0.01, 0.07, 0.15, 0.3)
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_j560f"]
 shader = ExtResource("3_fsh2l")
 shader_parameter/level = 0.0
 shader_parameter/kick = 0.0
 shader_parameter/aspect = 1.77778
-shader_parameter/locked_aspect = -1.0
+shader_parameter/locked_aspect = 2.0
 shader_parameter/music_reaction = 0.8
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_era08"]
 shader = ExtResource("3_63417")
 shader_parameter/aspect = 1.0
-shader_parameter/ring_radius = 0.45
+shader_parameter/ring_radius = 0.25
 shader_parameter/thickness = 0.015
 shader_parameter/bass = 0.0
 shader_parameter/treble = 0.0
 shader_parameter/bass_thresh = 0.2
-shader_parameter/treble_thresh = 0.2
+shader_parameter/treble_thresh = 0.0
 shader_parameter/hue_period_s = 10.0
 shader_parameter/saturation = 0.95
 shader_parameter/value = 1.0
@@ -617,7 +1000,7 @@ shader_parameter/blur_taps = 3
 
 [node name="Visualizer" type="Node2D"]
 script = ExtResource("1")
-extra_shader_materials = Array[ShaderMaterial]([SubResource("ShaderMaterial_tqmyl"), SubResource("ShaderMaterial_l1rbe"), SubResource("ShaderMaterial_w1g30"), SubResource("ShaderMaterial_lvnau"), SubResource("ShaderMaterial_npcw7"), SubResource("ShaderMaterial_mpre3"), SubResource("ShaderMaterial_n122m"), SubResource("ShaderMaterial_0a5nj"), SubResource("ShaderMaterial_fkjsi"), SubResource("ShaderMaterial_ij8vb"), SubResource("ShaderMaterial_ou6xn"), SubResource("ShaderMaterial_kwimc"), SubResource("ShaderMaterial_8xij6"), SubResource("ShaderMaterial_3jun3"), SubResource("ShaderMaterial_6xduc"), SubResource("ShaderMaterial_xbqxu"), SubResource("ShaderMaterial_wy6vq"), SubResource("ShaderMaterial_vrfua"), SubResource("ShaderMaterial_o0mw7")])
+extra_shader_materials = Array[ShaderMaterial]([SubResource("ShaderMaterial_tqmyl"), SubResource("ShaderMaterial_l1rbe"), SubResource("ShaderMaterial_w1g30"), SubResource("ShaderMaterial_lvnau"), SubResource("ShaderMaterial_npcw7"), SubResource("ShaderMaterial_mpre3"), SubResource("ShaderMaterial_n122m"), SubResource("ShaderMaterial_0a5nj"), SubResource("ShaderMaterial_fkjsi"), SubResource("ShaderMaterial_ij8vb"), SubResource("ShaderMaterial_ou6xn"), SubResource("ShaderMaterial_kwimc"), SubResource("ShaderMaterial_8xij6"), SubResource("ShaderMaterial_3jun3"), SubResource("ShaderMaterial_6xduc"), SubResource("ShaderMaterial_xbqxu"), SubResource("ShaderMaterial_wy6vq"), SubResource("ShaderMaterial_vrfua"), SubResource("ShaderMaterial_o0mw7"), SubResource("ShaderMaterial_fqwkm"), SubResource("ShaderMaterial_kbp6i"), SubResource("ShaderMaterial_meos5"), SubResource("ShaderMaterial_oq7wg"), SubResource("ShaderMaterial_f17lq"), SubResource("ShaderMaterial_swuvo"), SubResource("ShaderMaterial_a3qwx"), SubResource("ShaderMaterial_ii33l"), SubResource("ShaderMaterial_0k0t4"), SubResource("ShaderMaterial_hbxid"), SubResource("ShaderMaterial_nbxlb"), SubResource("ShaderMaterial_y1ht4"), SubResource("ShaderMaterial_fecf4"), SubResource("ShaderMaterial_og0j4"), SubResource("ShaderMaterial_ir4bg"), SubResource("ShaderMaterial_2og57"), SubResource("ShaderMaterial_08xhs"), SubResource("ShaderMaterial_b7mur"), SubResource("ShaderMaterial_bmp84"), SubResource("ShaderMaterial_o4jmb"), SubResource("ShaderMaterial_w3kxe"), SubResource("ShaderMaterial_kwhl1"), SubResource("ShaderMaterial_gxkjj"), SubResource("ShaderMaterial_4y6ch"), SubResource("ShaderMaterial_jfxei"), SubResource("ShaderMaterial_t154n"), SubResource("ShaderMaterial_wdjow"), SubResource("ShaderMaterial_al3y2"), SubResource("ShaderMaterial_bdrea"), SubResource("ShaderMaterial_fm6wb"), SubResource("ShaderMaterial_kytdp")])
 material_chromatic = SubResource("ShaderMaterial_j560f")
 material_circle = SubResource("ShaderMaterial_era08")
 material_bars = SubResource("ShaderMaterial_6qqup")

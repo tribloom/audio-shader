@@ -36,7 +36,12 @@ void fragment() {
     // Map to [-1, 1] with correct orientation (right side up for Godot 4)
     vec2 uv = (UV - 0.5) * 2.0;
     uv.y = -uv.y;            // flip so it’s not upside down vs. Shadertoy
-    uv.x *= aspect;          // preserve aspect
+    //uv.x *= aspect;          // preserve aspect
+	    if (aspect >= 1.0) {
+        uv.x *= aspect;      // landscape: stretch X so radius stays circular
+    } else {
+        uv.y /= aspect;      // portrait: compress Y to balance composition
+    }
 
     vec2 center = vec2(0.0);
     float d = length(uv - center);

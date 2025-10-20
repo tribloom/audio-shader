@@ -28,6 +28,12 @@ uniform float wave_thickness = 0.03; // thicker avoids raymarch gaps
 uniform float grad_val = 0.8; // GRADVAL
 uniform float aspect = 1.77777;
 
+// Projection / motion options
+uniform bool view_flat = false;      // original "flat" option
+uniform bool enable_rotate = false;  // original rotate toggle
+uniform float rotate_speed = 0.35;   // radians per second when rotating
+uniform float rotate_manual = 0.0;   // add manual offset when desired
+
 uniform vec3 color1 : source_color = vec3(0.25,0.625,0.625);
 uniform vec3 color2 : source_color = vec3(0.25,0.25,1.0);
 uniform vec3 color3 : source_color = vec3(1.00,0.25,0.25);
@@ -101,6 +107,18 @@ void fragment(){
     float z = -0.5;
     vec3 ro = vec3(0.0, 0.0, z-2.0);
     vec3 rd = normalize(vec3(p, z) - ro);
+
+    if (view_flat){
+        ro = vec3(p, z-2.0);
+        rd = vec3(0.0, 0.0, 1.0);
+    }
+
+    if (enable_rotate){
+        float angle = rotate_manual + TIME * rotate_speed;
+        vec3 angles = vec3(0.0, angle, 0.0);
+        ro = rotate_xyz(ro, angles);
+        rd = rotate_xyz(rd, angles);
+    }
 
     // Choose the signal used for the horizontal bar
     float ux = clamp((p.x/aspect + 1.0) * 0.5, 0.0, 1.0);

@@ -16,12 +16,12 @@ extends Node2D
 	"HEXAGONE",
 	"ARC_STORM",
 	"ELECTRON_SURGE",
-	"HEX_TERRAIN",
-	"KALEIDOSCOPE_BLOOM",
-	"PARTICLE_CONSTELLATIONS",
-	"VORONOI_PULSE_GRID",
-	"VOXEL_CITYSCAPE",
-	"RIBBON_TRAILS",
+	"HEX_TERRAIN",  #ai
+	"KALEIDOSCOPE_BLOOM",  #ai
+	"PARTICLE_CONSTELLATIONS",  #ai
+	"VORONOI_PULSE_GRID",  #ai
+	"VOXEL_CITYSCAPE",  #ai
+	"RIBBON_TRAILS",  #ai
 	"ATANS_BEGONE",
 	"OVERSATURATED_WEB",
 	"JASZ_UNIVERSE","BARS_PLUS",
@@ -30,7 +30,38 @@ extends Node2D
 	"AUDIO_VISUALIZER",
 	"ABSTRACT_MUSIC",
 	"RAYMARCH_AUDIO",
-	"COMPLICATING"
+	"COMPLICATING",
+	"SINE_PUKE",
+	"FUZZY_BRAIN",
+	"SMITH_CELLS",
+	"RAINBOW_TURBULENCE",
+	"LIGHT_SHOW",
+	"POLAR_AURORA", #ai
+	"RADIAL_SPOKES",  #ai
+	"NEON_RINGS",  #ai
+	"ORBITALS",  #ai
+	"LISSAJOUS_WEAVE",  #ai
+	"TUNNEL_STRIPES",  #ai`
+	"HEX_BLOOM",  #ai
+	"SOFT_RIPPLES",  #ai
+	"NEON_GRID_DRIFT",  #ai
+	"CHROMATIC_TUNNEL",  #ai
+	"PULSE_MATRIX",  #ai
+	"ACID_BLOOM",  #ai
+	"FRACTAL_DRIVE",  #ai
+	"CIRCUT_PULSE",  #ai
+	"SPECTRAL_BURST",  #ai
+	"VOLTAGE_SURGE",  #ai
+	"METALSTORM",  #ai
+	"PLASMA_HELIX",  #ai
+	"AURORA_DESCENT",  #ai
+	"ECHOFORM_FADE",  #ai
+	"BARBURST_360", #ai
+	"BEAT_KALEIDO", #ai
+	"SPIRAL_RUNNER", #ai
+	"SHOCK_PARTICLES", #ai
+	"EXTRA_DEBUG_PIXEL_FFT",
+	"AUDIO_REAKTIVE",
 ]      # e.g. ["ARCS", "STARFIELD"]
 @export var extra_shader_materials: Array[ShaderMaterial] = []  # same length as names
 
@@ -168,7 +199,7 @@ var _wf_head: int = 0
 # stream the audio uniforms that are pushed into each shader. The values appear
 # in the Godot Output panel while running in the editor or in the terminal when
 # launched headless.
-@export var debug_log_audio_uniforms: bool = true
+@export var debug_log_audio_uniforms: bool = false
 # when true, prints audio uniform values sent to shaders
 @export var debug_log_interval: float = 1.0          # seconds between debug log samples
 var _debug_log_accum: float = 0.0
@@ -446,6 +477,24 @@ func _apply_shader_params(params: Dictionary) -> void:
 				v = Color(a[0], a[1], a[2], 1.0) # works for vec3/color
 			elif a.size() == 4:
 				v = Color(a[0], a[1], a[2], a[3])
+		if typeof(v) == TYPE_STRING:
+			var s := String(v)
+
+			# allow "null" to clear a param
+			if s == "null":
+				mat.set_shader_parameter(k, null)
+				continue
+
+			# normalize and attempt to load textures/resources
+			var resolved := _normalize_resource_path(s)
+			if resolved.begins_with("res://") or resolved.begins_with("user://"):
+				var res := load(resolved)
+				print(res)
+				if res is Texture2D:
+					mat.set_shader_parameter(k, res)
+					continue
+				# If it's not a texture, just fall through and set the raw string
+
 		mat.set_shader_parameter(k, v)
 
 func set_offline_mode(enable: bool) -> void:
@@ -516,14 +565,28 @@ func load_features_csv(path: String, start_time: float = 0.0, end_time: float = 
 			f.close()
 			return
 
-	var band_columns: Array = []
+	#var band_columns: Array = []
+	#for h in headers:
+	#	var name := h.strip_edges()
+	#	if name.length() >= 2 and name.begins_with("s"):
+	#		if name.substr(1).is_valid_int():
+	#			band_columns.append(name.to_lower())
+	#band_columns.sort_custom(func(a, b):
+	#	return int(String(a).substr(1)) < int(String(b).substr(1)))
+	var band_column_map := {}
+	var band_indices: Array = []
+	var max_band_index := -1
 	for h in headers:
 		var name := h.strip_edges()
 		if name.length() >= 2 and name.begins_with("s"):
-			if name.substr(1).is_valid_int():
-				band_columns.append(name.to_lower())
-	band_columns.sort_custom(func(a, b):
-		return int(String(a).substr(1)) < int(String(b).substr(1)))
+			var idx_str := name.substr(1)
+			if idx_str.is_valid_int():
+				var idx_val := int(idx_str)
+				band_column_map[idx_val] = name.to_lower()
+				band_indices.append(idx_val)
+				if idx_val > max_band_index:
+					max_band_index = idx_val
+	band_indices.sort()
 
 	var window_start: float = max(start_time, 0.0)
 	var window_end: float = -1.0
@@ -556,15 +619,33 @@ func load_features_csv(path: String, start_time: float = 0.0, end_time: float = 
 			if window_end > 0.0 and t_val - cutoff_epsilon >= window_end:
 				break
 
+		#var bands := PackedFloat32Array()
+		#bands.resize(band_columns.size())
+		#for bi in range(band_columns.size()):
+		#	var cname = band_columns[bi]
+		#	if col_index.has(cname):
+		#		var raw := cells[col_index[cname]].strip_edges()
+		#		bands[bi] = raw.to_float()
+		#	else:
+		#		bands[bi] = 0.0
+		var band_count := 0
+		if max_band_index >= 0:
+			band_count = max_band_index + 1
+		else:
+			band_count = band_indices.size()
+		
 		var bands := PackedFloat32Array()
-		bands.resize(band_columns.size())
-		for bi in range(band_columns.size()):
-			var cname = band_columns[bi]
-			if col_index.has(cname):
-				var raw := cells[col_index[cname]].strip_edges()
-				bands[bi] = raw.to_float()
-			else:
-				bands[bi] = 0.0
+		if band_count > 0:
+			bands.resize(band_count)
+			for idx in band_indices:
+				var cname: String = band_column_map.get(idx, "")
+				if cname != "" and col_index.has(cname):
+					var raw := cells[col_index[cname]].strip_edges()
+					if idx >= 0 and idx < bands.size():
+						bands[idx] = raw.to_float()
+		else:
+			bands = PackedFloat32Array()
+		
 
 		var adj_time := t_val
 		if use_window:
