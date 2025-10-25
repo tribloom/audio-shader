@@ -81,9 +81,9 @@ extends Node2D
 	"SOLACE_IN_STRUCTURE",
 	"FRACTAL_BROWNIAN_MOTION",
 	"SHADER_TOBER",
-        "RAINBOW_SPECTRUM",
-        "BUFFERED_EXAMPLE",
-        "BUFFERED_ESPIAL",
+	"RAINBOW_SPECTRUM",
+	"BUFFERED_EXAMPLE",
+	"BUFFERED_ESPIAL",
 
 
 ]      # e.g. ["ARCS", "STARFIELD"]
@@ -296,18 +296,18 @@ var _current_cue_idx: int = -1
 # -----------------------------------------------------------------------------------
 
 func _ready() -> void:
-        mode = start_mode
-        _build_shader_registry()
-        _default_buffer_material = buffer_a_material
-        _build_buffer_override_lookup()
+	mode = start_mode
+	_build_shader_registry()
+	_default_buffer_material = buffer_a_material
+	_build_buffer_override_lookup()
 
-        _setup_spectrum_resources()
-        _setup_waterfall_resources()
-        _setup_waveform_resources()
+	_setup_spectrum_resources()
+	_setup_waterfall_resources()
+	_setup_waveform_resources()
 
-        _initialize_buffer_viewport()
+	_initialize_buffer_viewport()
 
-        _apply_mode_material()
+	_apply_mode_material()
 
 	_is_portrait = start_in_portrait
 	_apply_window_orientation()
@@ -340,20 +340,20 @@ func _ready() -> void:
 
 
 func _register_shader(name: String, mat: ShaderMaterial, mode_opt = null) -> void:
-        if name == "" or mat == null:
-                return
-        var key := name.to_upper()
-        _name_to_material[key] = mat
-        _material_to_name[mat] = key
-        if mode_opt != null:
-                _name_to_mode[key] = mode_opt
+	if name == "" or mat == null:
+		return
+	var key := name.to_upper()
+	_name_to_material[key] = mat
+	_material_to_name[mat] = key
+	if mode_opt != null:
+		_name_to_mode[key] = mode_opt
 
 func _build_shader_registry() -> void:
-        # Built-ins: names match your enum for easy use in tracklist
-        _name_to_material.clear()
-        _name_to_mode.clear()
-        _material_to_name.clear()
-        _register_shader("CHROMA",          material_chromatic,       Mode.CHROMA)
+	# Built-ins: names match your enum for easy use in tracklist
+	_name_to_material.clear()
+	_name_to_mode.clear()
+	_material_to_name.clear()
+	_register_shader("CHROMA",          material_chromatic,       Mode.CHROMA)
 	_register_shader("CIRCLE",          material_circle,          Mode.CIRCLE)
 	_register_shader("BARS",            material_bars,            Mode.BARS)
 	_register_shader("LINE",            material_line,            Mode.LINE)
@@ -368,89 +368,89 @@ func _build_shader_registry() -> void:
 	_register_shader("BUBBLES",         material_bubbles,         Mode.BUBBLES)
 
 	# Extras from Inspector (names + materials arrays)
-        var n = min(extra_shader_names.size(), extra_shader_materials.size())
-        for i in range(n):
-                _register_shader(extra_shader_names[i], extra_shader_materials[i]) # no enum on purpose
+	var n = min(extra_shader_names.size(), extra_shader_materials.size())
+	for i in range(n):
+		_register_shader(extra_shader_names[i], extra_shader_materials[i]) # no enum on purpose
 
 func _build_buffer_override_lookup() -> void:
-        _buffer_override_lookup.clear()
-        var count := min(buffer_override_names.size(), buffer_override_materials.size())
-        for i in range(count):
-                var raw_name := buffer_override_names[i]
-                var override_mat := buffer_override_materials[i]
-                if override_mat == null:
-                        continue
-                var key := raw_name.strip_edges().to_upper()
-                if key == "":
-                        continue
-                _buffer_override_lookup[key] = override_mat
+	_buffer_override_lookup.clear()
+	var count := min(buffer_override_names.size(), buffer_override_materials.size())
+	for i in range(count):
+		var raw_name := buffer_override_names[i]
+		var override_mat := buffer_override_materials[i]
+		if override_mat == null:
+			continue
+		var key := raw_name.strip_edges().to_upper()
+		if key == "":
+			continue
+		_buffer_override_lookup[key] = override_mat
 
 func _initialize_buffer_viewport() -> void:
-        if buffer_viewport == null:
-                buffer_viewport = SubViewport.new()
-                buffer_viewport.name = "BufferViewport"
-                add_child(buffer_viewport)
+	if buffer_viewport == null:
+		buffer_viewport = SubViewport.new()
+		buffer_viewport.name = "BufferViewport"
+		add_child(buffer_viewport)
 
-        buffer_viewport.process_mode = SubViewport.PROCESS_MODE_ALWAYS
-        buffer_viewport.disable_3d = true
-        buffer_viewport.gui_disable_input = true
-        buffer_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
-        buffer_viewport.render_target_clear_mode = SubViewport.CLEAR_MODE_NEVER
-        buffer_viewport.transparent_bg = true
+	buffer_viewport.process_mode = SubViewport.PROCESS_MODE_ALWAYS
+	buffer_viewport.disable_3d = true
+	buffer_viewport.gui_disable_input = true
+	buffer_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	buffer_viewport.render_target_clear_mode = SubViewport.CLEAR_MODE_NEVER
+	buffer_viewport.transparent_bg = true
 
-        if buffer_quad == null:
-                buffer_quad = ColorRect.new()
-                buffer_quad.name = "BufferQuad"
-                buffer_quad.mouse_filter = Control.MOUSE_FILTER_IGNORE
-                buffer_quad.set_anchors_preset(Control.PRESET_FULL_RECT)
-                buffer_viewport.add_child(buffer_quad)
+	if buffer_quad == null:
+		buffer_quad = ColorRect.new()
+		buffer_quad.name = "BufferQuad"
+		buffer_quad.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		buffer_quad.set_anchors_preset(Control.PRESET_FULL_RECT)
+		buffer_viewport.add_child(buffer_quad)
 
-        _sync_buffer_viewport_to_window()
+	_sync_buffer_viewport_to_window()
 
-        _buffer_viewport_texture = buffer_viewport.get_texture()
+	_buffer_viewport_texture = buffer_viewport.get_texture()
 
-        if _default_buffer_material == null:
-                _default_buffer_material = buffer_a_material
+	if _default_buffer_material == null:
+		_default_buffer_material = buffer_a_material
 
-        if buffer_a_material != null:
-                _set_buffer_material(buffer_a_material)
+	if buffer_a_material != null:
+		_set_buffer_material(buffer_a_material)
 
 func _set_buffer_material(mat: ShaderMaterial) -> void:
-        if buffer_viewport == null or buffer_quad == null:
-                return
-        if mat == null:
-                return
-        if _active_buffer_material == mat:
-                return
-        _active_buffer_material = mat
-        buffer_quad.material = mat
-        _apply_static_shader_inputs(mat)
+	if buffer_viewport == null or buffer_quad == null:
+		return
+	if mat == null:
+		return
+	if _active_buffer_material == mat:
+		return
+	_active_buffer_material = mat
+	buffer_quad.material = mat
+	_apply_static_shader_inputs(mat)
 
 func _update_buffer_material_override() -> void:
-        var desired := _default_buffer_material
-        var active_mat := color_rect.material as ShaderMaterial
-        if active_mat != null:
-                var key := ""
-                if _material_to_name.has(active_mat):
-                        key = _material_to_name[active_mat]
-                else:
-                        var shader := active_mat.shader
-                        if shader != null:
-                                var path := shader.resource_path
-                                if path != "":
-                                        key = path
-                                else:
-                                        key = shader.resource_name
-                key = key.strip_edges().to_upper()
-                if key != "" and _buffer_override_lookup.has(key):
-                        desired = _buffer_override_lookup[key]
-        if desired == null:
-                desired = buffer_a_material
-        if desired == null:
-                return
-        if _default_buffer_material == null:
-                _default_buffer_material = desired
-        _set_buffer_material(desired)
+	var desired := _default_buffer_material
+	var active_mat := color_rect.material as ShaderMaterial
+	if active_mat != null:
+		var key := ""
+		if _material_to_name.has(active_mat):
+			key = _material_to_name[active_mat]
+		else:
+			var shader := active_mat.shader
+			if shader != null:
+				var path := shader.resource_path
+				if path != "":
+					key = path
+				else:
+					key = shader.resource_name
+		key = key.strip_edges().to_upper()
+		if key != "" and _buffer_override_lookup.has(key):
+			desired = _buffer_override_lookup[key]
+	if desired == null:
+		desired = buffer_a_material
+	if desired == null:
+		return
+	if _default_buffer_material == null:
+		_default_buffer_material = desired
+	_set_buffer_material(desired)
 
 func _auto_load_offline_assets() -> void:
 	if !auto_load_offline_data:
@@ -1002,23 +1002,23 @@ func _apply_window_orientation() -> void:
 	_update_aspect()
 
 func _sync_buffer_viewport_to_window() -> void:
-        if buffer_viewport == null:
-                return
-        var viewport_size := get_viewport_rect().size
-        if viewport_size.x <= 0.0 or viewport_size.y <= 0.0:
-                return
-        var desired := Vector2i(int(round(viewport_size.x)), int(round(viewport_size.y)))
-        if desired.x <= 0 or desired.y <= 0:
-                return
-        if buffer_viewport.size != desired:
-                buffer_viewport.size = desired
+	if buffer_viewport == null:
+		return
+	var viewport_size := get_viewport_rect().size
+	if viewport_size.x <= 0.0 or viewport_size.y <= 0.0:
+		return
+	var desired := Vector2i(int(round(viewport_size.x)), int(round(viewport_size.y)))
+	if desired.x <= 0 or desired.y <= 0:
+		return
+	if buffer_viewport.size != desired:
+		buffer_viewport.size = desired
 		
 func _apply_mode_material() -> void:
-        match mode:
-                Mode.CHROMA:            color_rect.material = material_chromatic
-                Mode.CIRCLE:            color_rect.material = material_circle
-                Mode.BARS:              color_rect.material = material_bars
-                Mode.LINE:              color_rect.material = material_line
+	match mode:
+		Mode.CHROMA:            color_rect.material = material_chromatic
+		Mode.CIRCLE:            color_rect.material = material_circle
+		Mode.BARS:              color_rect.material = material_bars
+		Mode.LINE:              color_rect.material = material_line
 		Mode.WATERFALL:         color_rect.material = material_waterfall
 		Mode.AURORA:            color_rect.material = material_aurora
 		Mode.UNIVERSE:          color_rect.material = material_universe
@@ -1027,10 +1027,10 @@ func _apply_mode_material() -> void:
 		Mode.POWER_PARTICLE:    color_rect.material = material_power_particle
 		Mode.SONIC_FUSION:      color_rect.material = material_sonic_fusion
 		Mode.FRACTAL_COLORS:    color_rect.material = material_fractal_colors
-                Mode.BUBBLES:           color_rect.material = material_bubbles
-                Mode.CUSTOM:            color_rect.material = _custom_active_material
-        _bind_all_material_textures()
-        _update_buffer_material_override()
+		Mode.BUBBLES:           color_rect.material = material_bubbles
+		Mode.CUSTOM:            color_rect.material = _custom_active_material
+	_bind_all_material_textures()
+	_update_buffer_material_override()
 
 func _process(dt: float) -> void:
 
@@ -1680,23 +1680,23 @@ func _update_kick_envelope(dt: float) -> void:
 
 # Bind textures once
 func _bind_all_material_textures() -> void:
-        for m in [
-                material_bars, material_line, material_aurora,
-                material_universe, material_universe_alt,
-                material_basic_audio_shader, material_sonic_fusion,
-                material_fractal_colors, material_bubbles
-        ]:
-                _apply_static_shader_inputs(m)
+	for m in [
+		material_bars, material_line, material_aurora,
+		material_universe, material_universe_alt,
+		material_basic_audio_shader, material_sonic_fusion,
+		material_fractal_colors, material_bubbles
+	]:
+		_apply_static_shader_inputs(m)
 
-        _apply_static_shader_inputs(buffer_a_material)
-        if _active_buffer_material != null and _active_buffer_material != buffer_a_material:
-                _apply_static_shader_inputs(_active_buffer_material)
-        for override_mat in _buffer_override_lookup.values():
-                _apply_static_shader_inputs(override_mat)
+	_apply_static_shader_inputs(buffer_a_material)
+	if _active_buffer_material != null and _active_buffer_material != buffer_a_material:
+		_apply_static_shader_inputs(_active_buffer_material)
+	for override_mat in _buffer_override_lookup.values():
+		_apply_static_shader_inputs(override_mat)
 
-        # Extras
-        for m in extra_shader_materials:
-                _apply_static_shader_inputs(m)
+	# Extras
+	for m in extra_shader_materials:
+		_apply_static_shader_inputs(m)
 
 	# Custom active (if any)
 	_apply_static_shader_inputs(_custom_active_material)
