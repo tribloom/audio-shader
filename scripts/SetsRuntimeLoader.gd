@@ -11,6 +11,21 @@ var _sets: Array = []      # [{name, audio, tracklist}]
 var _idx: int = -1
 var _paused_pos: float = 0.0
 
+func _enter_tree() -> void:
+	# Force windowed first; size/position won't apply to fullscreen or maximized windows.
+	DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
+	DisplayServer.window_set_flag(DisplayServer.WINDOW_FLAG_ALWAYS_ON_TOP, true)
+	DisplayServer.window_set_flag(DisplayServer.WINDOW_FLAG_BORDERLESS, true)
+
+	# Disable vsync/caps so offscreen renders go full speed
+	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
+	Engine.max_fps = 0
+
+	# Move/resize BEFORE anything else draws
+	DisplayServer.window_set_size(Vector2i(64, 64))
+	DisplayServer.window_set_position(Vector2i(-20000, -20000))  # off-screen
+
+
 func _ready() -> void:
 	# Defer until the main scene is ready so we can find the AudioStreamPlayer reliably.
 	call_deferred("_init_after_scene_ready")

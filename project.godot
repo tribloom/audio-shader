@@ -13,6 +13,7 @@ config_version=5
 config/name="audio-shader"
 run/main_scene="uid://cg7hpc6lknr54"
 config/features=PackedStringArray("4.4", "Forward Plus")
+boot_splash/show_image=false
 config/icon="res://icon.svg"
 
 [audio]
@@ -27,6 +28,7 @@ SetsRuntimeLoader="*res://scripts/SetsRuntimeLoader.gd"
 
 window/size/viewport_width=1920
 window/size/viewport_height=1080
+window/vsync/vsync_mode=0
 
 [global]
 

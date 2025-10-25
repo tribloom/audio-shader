@@ -1,0 +1,12 @@
+0:00 Mechanized Faith | shader=ARC_STORM | set={"curvature":0,"warp_amp":0.5}
+5:28 Ghost Signal | shader=TRIPLE_WAVE_LINES
+9:56 Burn Sequence | shader=AUDIO_REAKTIVE | set={"noise_overlay":0.1}
+14:37 Blades of Light | shader=SPARKLE_AND_LINES
+19:35 Ion Spiral | shader=TWISTED_TORUS | set={"glow_mix":0.2}
+25:06 Lost Frequency | shader=KOAN | set={"wave_layers":8.0}
+30:30 Hyperline | shader=FALLING_STRIPES | set={"falling_spped":0.01,"glow_radius":0.009,"stripes_per_screen":400,"hit_threshold":0.275,"color_boost":1.097}
+35:34 Fragment Theory | shader=SPIRAL_RUNNER | set={"audio_enabled":true,"thickness":0.25}
+40:30 Catalyst Field | shader=ABSTRACT_GLASS_FIELD | set={"audio_gain":0.5}
+45:58 Eternal Surge | shader=SINE_PUKE | set={"flow_curve":35,"flow_speed":2}
+50:39 Mercury Cascade | shader=LIQUID_METAL | set={"use_audio":true,"audio_gain":0.75}
+57:03 Skybreaker | shader=PARALLAX_GALAXY | set={"use_audio":true,"audio_gain":0.5}
