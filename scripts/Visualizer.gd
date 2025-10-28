@@ -17,7 +17,7 @@ extends Node2D
 	"ARC_STORM",
 	"ELECTRON_SURGE",
 	"HEX_TERRAIN",  #ai
-	"KALEIDOSCOPE_BLOOM",  #ai
+	"KALEIDOSCOPE_BLOOM",  #ai - done
 	"PARTICLE_CONSTELLATIONS",  #ai
 	"VORONOI_PULSE_GRID",  #ai
 	"VOXEL_CITYSCAPE",  #ai
@@ -58,7 +58,7 @@ extends Node2D
 	"ECHOFORM_FADE",  #ai
 	"BARBURST_360", #ai
 	"BEAT_KALEIDO", #ai
-	"SPIRAL_RUNNER", #ai
+	"SPIRAL_RUNNER", #ai - done
 	"SHOCK_PARTICLES", #ai
 	"EXTRA_DEBUG_PIXEL_FFT",
 	"AUDIO_REAKTIVE",
@@ -72,8 +72,8 @@ extends Node2D
 	"LIQUID_METAL",
 	"LISSAJOUS_GLOVES", #ai
 	"HEX_PULSE_LATICE", #ai
-	"SPIRAL_RIBBON_TUNNEL", #ai
-	"NEURAL_BLOOM", #ai
+	"SPIRAL_RIBBON_TUNNEL", #ai - done
+	"NEURAL_BLOOM", #ai - done
 	"ENTROPY_COLLAPSE", #ai
 	"SPECTRAL_CURRENT", #ai
 	"QUANTUM_BLOOM", #ai
@@ -84,6 +84,8 @@ extends Node2D
 	"RAINBOW_SPECTRUM",
 	"BUFFERED_EXAMPLE",
 	"BUFFERED_ESPIAL",
+	"PORTAL_TUNNEL", #ai
+	"RIBBON_ORBITALS", #ai
 
 
 ]      # e.g. ["ARCS", "STARFIELD"]
@@ -374,7 +376,7 @@ func _build_shader_registry() -> void:
 
 func _build_buffer_override_lookup() -> void:
 	_buffer_override_lookup.clear()
-	var count := min(buffer_override_names.size(), buffer_override_materials.size())
+	var count = min(buffer_override_names.size(), buffer_override_materials.size())
 	for i in range(count):
 		var raw_name := buffer_override_names[i]
 		var override_mat := buffer_override_materials[i]

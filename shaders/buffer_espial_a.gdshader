@@ -6,6 +6,9 @@ const float ZUCCONI_OFFSET = 1.05;
 uniform sampler2D spectrum_tex;
 uniform sampler2D history_tex : hint_screen_texture, filter_linear;
 uniform vec2 buffer_a_size = vec2(1920.0, 1080.0);
+uniform float audio_gamma = 2.2;
+uniform float audio_gain = 3.5;
+uniform float audio_floor = 0.02;
 
 float saturate(float x) {
 	return clamp(x, 0.0, 1.0);
@@ -90,15 +93,17 @@ float snoise(vec3 v) {
 }
 
 float spatialize_audio(float dist) {
-	float fft_domain = pow(dist, 2.0);
-	float fft = texture(spectrum_tex, vec2(fft_domain * 0.09, 0.25)).r;
-	return pow(fft, 4.0);
+	float fft_domain = dist * dist;
+	float fft_u = clamp(fft_domain * 0.09, 0.0, 1.0);
+	float fft = texture(spectrum_tex, vec2(fft_u, 0.0)).r;
+	fft = max(audio_floor, pow(max(fft, 0.0), audio_gamma));
+	return fft * audio_gain;
 }
 
 void fragment() {
 	vec2 resolution = buffer_a_size;
 	if (resolution.x <= 0.0 || resolution.y <= 0.0) {
-		resolution = vec2(texture_size(history_tex, 0));
+		resolution = vec2(1.0, 1.0);
 	}
 	vec2 frag_coord = UV * resolution;
 	vec2 uv = frag_coord / resolution;
@@ -119,5 +124,5 @@ void fragment() {
 	vec3 prev_color = texture(history_tex, offset).rgb;
 	color += prev_color * 0.95;
 
-	COLOR = vec4(color, audio_signal);
+	COLOR = vec4(color, clamp(audio_signal, 0.0, 1.0));
 }

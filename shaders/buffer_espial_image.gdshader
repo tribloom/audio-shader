@@ -9,6 +9,8 @@ const float INITIAL_LUMA = 0.6;
 
 uniform sampler2D buffer_a_tex : filter_linear;
 uniform vec2 buffer_a_size = vec2(1920.0, 1080.0);
+uniform float feedback_mix = 1.0;
+uniform float feedback_gamma = 1.0;
 
 float saturate(float x) {
 	return clamp(x, 0.0, 1.0);
@@ -39,7 +41,7 @@ vec3 spectral_zucconi6(float x) {
 mat2 rotate2d(float angle) {
 	float s = sin(angle);
 	float c = cos(angle);
-	return mat2(c, -s, s, c);
+	return mat2(vec2(c, -s), vec2(s, c));
 }
 
 float get_color_component(vec2 st, float mod_scale, float blur) {
@@ -49,20 +51,30 @@ float get_color_component(vec2 st, float mod_scale, float blur) {
 	return shape_map;
 }
 
+vec4 sample_buffer(vec2 uv) {
+	vec2 uv_clamped = clamp(uv, vec2(0.0), vec2(1.0));
+	vec4 tex = texture(buffer_a_tex, uv_clamped);
+	if (feedback_gamma != 1.0) {
+		tex.rgb = pow(max(tex.rgb, vec3(0.0)), vec3(feedback_gamma));
+	}
+	return tex;
+}
+
 void fragment() {
 	vec2 resolution = buffer_a_size;
 	if (resolution.x <= 0.0 || resolution.y <= 0.0) {
-		resolution = vec2(texture_size(buffer_a_tex, 0));
+		resolution = vec2(1.0, 1.0);
 	}
 	vec2 frag_coord = UV * resolution;
 	vec2 uv = frag_coord / resolution;
-	vec4 feedback = texture(buffer_a_tex, uv);
+	vec4 feedback = sample_buffer(uv);
 	float blur = 0.4 + sin(TIME * 0.52) * 0.2;
 
 	vec2 st = (2.0 * frag_coord - resolution) / min(resolution.x, resolution.y);
 	vec2 orig_st = st;
 
-	st -= (feedback.r + feedback.g + feedback.b) * st * 0.3;
+	float energy = clamp(feedback.r + feedback.g + feedback.b, 0.0, 3.0);
+	st -= energy * st * 0.3;
 
 	st *= rotate2d(sin(TIME * 0.14) * 0.3);
 	st *= (sin(TIME * 0.15) + 2.0) * 0.3;
@@ -92,9 +104,10 @@ void fragment() {
 
 	float orig_dist = length(orig_st);
 	float zucconi_domain = ZUCCONI_OFFSET - orig_dist;
-	vec3 audio_color = spectral_zucconi6(zucconi_domain) * feedback.a * 0.4;
-	color *= feedback.rgb;
+	float feedback_alpha = clamp(feedback.a * feedback_mix, 0.0, 4.0);
+	vec3 audio_color = spectral_zucconi6(zucconi_domain) * feedback_alpha * 0.4;
+	color *= saturate(feedback.rgb * feedback_mix + vec3(1.0 - feedback_mix));
 	color += audio_color;
 
-	COLOR = vec4(color, 1.0);
+	COLOR = vec4(saturate(color), 1.0);
 }
