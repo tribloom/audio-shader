@@ -7,7 +7,10 @@ extends SceneTree
 ##     --fps 60 --w 1920 --h 1080 ^
 ##     --out export/frames --jpg 1 --quality 0.9
 
+const HEADLESS_RENDER_RESTART_ENV := "AUDIO_SHADER_HEADLESS_RENDERER_RESTARTED"
+
 var args = {}
+var raw_cli_args: PackedStringArray = PackedStringArray()
 var svp: SubViewport
 var root_node: Node
 var fps: int = 60
@@ -20,6 +23,7 @@ var jpg_quality: float = 0.9
 var duration_s: float = 0.0
 var waveform_base: String = ""
 var frame_post_draw_supported: bool = true
+var render_swap_buffers: bool = false
 var overlay_enabled: bool = true
 
 # Tracklist overrides for headless mode
@@ -51,7 +55,9 @@ func _initialize() -> void:
 			rendering_method = str(rendering_server.call("get_rendering_method"))
 		if rendering_server and rendering_server.has_method("get_rendering_device"):
 			var device: Object = rendering_server.call("get_rendering_device")
-			if device and device.has_method("get_device_name"):
+			if device == null:
+				using_dummy_renderer = true
+			elif device.has_method("get_device_name"):
 				adapter = str(device.call("get_device_name"))
 	if rendering_method == "":
 		rendering_method = str(ProjectSettings.get_setting("rendering/renderer/rendering_method", ""))
@@ -62,8 +68,13 @@ func _initialize() -> void:
 	# advancing the scene manually in that environment.
 
 	frame_post_draw_supported = display_driver != "headless"
+	# Headless display driver skips swap buffers internally, but some
+	# platforms still require the flag to flush render commands.
+	render_swap_buffers = display_driver == "headless"
 	print("[ExportRenderer] Display driver: %s | Rendering method: %s | Adapter: %s" % [display_driver, rendering_method, adapter])
 	if using_dummy_renderer:
+		if _try_restart_headless_renderer(display_driver, rendering_method):
+			return
 		var msg := "[ExportRenderer] No usable renderer detected (display driver: %s, rendering method: %s). Run without --headless or supply --rendering-driver opengl3 / use the GL Compatibility renderer." % [display_driver, rendering_method]
 		push_error(msg)
 		print(msg)
@@ -321,7 +332,7 @@ func _initialize() -> void:
 
 func _capture_subviewport_image() -> Image:
 	var tex := svp.get_texture()
-	if tex == null:
+	if tex == null or !tex.get_rid().is_valid():
 		push_error("SubViewport returned no texture. The renderer is likely running in dummy/headless mode. Remove --headless or force a rendering driver such as --rendering-driver opengl3.")
 		quit(1)
 		return null
@@ -330,15 +341,7 @@ func _capture_subviewport_image() -> Image:
 	if img != null:
 		return img
 
-	var attempts := 0
-	while attempts < 4:
-		await _await_render_sync()
-		img = tex.get_image()
-		if img != null:
-			return img
-		attempts += 1
-
-	push_error("Failed to fetch SubViewport image after waiting for the renderer. The renderer may be running in dummy/headless mode. Remove --headless or force a rendering driver such as --rendering-driver opengl3.")
+	push_error("SubViewport texture could not provide image data. The renderer is likely running in dummy/headless mode. Remove --headless or force a rendering driver such as --rendering-driver opengl3.")
 	quit(1)
 	return null
 
@@ -354,15 +357,68 @@ func _await_render_sync() -> void:
 			did_sync = true
 		if RenderingServer.has_method("draw"):
 			var frame_step := (1.0 / float(fps)) if fps > 0 else 0.0
-			RenderingServer.call("draw", false, frame_step)
+			var swap_buffers := render_swap_buffers
+			RenderingServer.call("draw", swap_buffers, frame_step)
 			return
 		if did_sync:
 			return
 
 	await self.process_frame
 
+func _try_restart_headless_renderer(display_driver: String, rendering_method: String) -> bool:
+	if OS.get_environment(HEADLESS_RENDER_RESTART_ENV) != "":
+		return false
+	var exe := OS.get_executable_path()
+	if exe == "":
+		return false
+	if raw_cli_args.is_empty():
+		raw_cli_args = OS.get_cmdline_args()
+	var args := raw_cli_args.duplicate()
+	var driver_idx := args.find("--rendering-driver")
+	var driver_value := ""
+	if driver_idx >= 0:
+		if driver_idx + 1 < args.size():
+			driver_value = args[driver_idx + 1].to_lower()
+		else:
+			args.append("opengl3")
+			args[driver_idx] = "--rendering-driver"
+	if driver_value == "opengl3":
+		var method_idx_existing := args.find("--rendering-method")
+		var method_val := ""
+		if method_idx_existing >= 0 and method_idx_existing + 1 < args.size():
+			method_val = args[method_idx_existing + 1].to_lower()
+		if method_val == "gl_compatibility":
+			return false
+	if driver_idx >= 0:
+		if driver_idx + 1 < args.size():
+			args[driver_idx + 1] = "opengl3"
+		else:
+			args.insert(driver_idx + 1, "opengl3")
+	else:
+		args.insert(0, "opengl3")
+		args.insert(0, "--rendering-driver")
+	var method_idx := args.find("--rendering-method")
+	if method_idx >= 0:
+		if method_idx + 1 < args.size():
+			args[method_idx + 1] = "gl_compatibility"
+		else:
+			args.insert(method_idx + 1, "gl_compatibility")
+	else:
+		args.insert(0, "gl_compatibility")
+		args.insert(0, "--rendering-method")
+	OS.set_environment(HEADLESS_RENDER_RESTART_ENV, "1")
+	print("[ExportRenderer] Restarting with --rendering-driver opengl3 for headless export (%s/%s)." % [display_driver, rendering_method])
+	var err := OS.execute(exe, args, false)
+	if err != OK:
+		OS.set_environment(HEADLESS_RENDER_RESTART_ENV, "")
+		push_warning("[ExportRenderer] Failed to restart with --rendering-driver opengl3 (error %d)." % err)
+		return false
+	quit()
+	return true
+
 func _parse_args() -> void:
 	var raw := OS.get_cmdline_args()
+	raw_cli_args = raw.duplicate()
 	var pending_tracklist := ""
 	var i := 0
 	while i < raw.size():
