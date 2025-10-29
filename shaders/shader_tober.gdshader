@@ -9,10 +9,34 @@ uniform float level = 0.0;
 uniform float kick = 0.0;
 uniform float audio_gain = 1.0;
 
+uniform float spec_bins = 64.0;   // set to your offline bin count
+uniform float spec_row  = 0.5;    // y row to sample (0.5 for 1px tall; adjust if needed)
+
 /* === constants (match Shadertoy) === */
 uniform float ITER = 64.0;
 uniform float hit_epsilon = 0.001;
 uniform float bass_max = 0.75;
+
+float bin_x_center(float i, float bins){           // i in [0..bins-1]
+    return (i + 0.5) / bins;
+}
+
+float spectrum_bin(float i){                       // nearest bin center
+    float x = bin_x_center(i, spec_bins);
+    return texture(spectrum_tex, vec2(x, spec_row)).r * audio_gain;
+}
+
+float spectrum_range(float i0, float i1){          // average over [i0..i1]
+    i0 = clamp(i0, 0.0, spec_bins - 1.0);
+    i1 = clamp(i1, 0.0, spec_bins - 1.0);
+    float sum = 0.0;
+    float n = max(1.0, floor(i1 - i0 + 1.0));
+    for (float i = 0.0; i < 128.0; i += 1.0){      // 128 is an upper bound for loop unroll
+        if (i > (i1 - i0)) break;
+        sum += spectrum_bin(i0 + i);
+    }
+    return sum / n;
+}
 
 /* === audio: iChannel0 → your spectrum_tex === */
 float spectrum_sample(float x01){
@@ -24,9 +48,10 @@ float spectrum_sample(float x01){
 // Shadertoy used: #define megabass (texture(iChannel0, vec2(0.001,0.25)).x)
 float megabass(){
     if (!enable_audio) return 0.0;
-    // 0.001 is basically the first FFT bin
-    return spectrum_sample(0.001);
+    // Average first ~3 bins for stability (tune 0..3/5/8 to taste)
+    return spectrum_range(0.0, 3.0);
 }
+
 
 /* === small helpers === */
 float hash21(vec2 x){
