@@ -293,6 +293,7 @@ var _credit_label: Label
 var _label_settings: LabelSettings
 var _credit_settings: LabelSettings
 var _cues: Array = []       # Array of { "t": float, "title": String }
+var _cue_event_state: Dictionary = {}   # cue index -> last applied event index
 var _current_cue_idx: int = -1
 
 # -----------------------------------------------------------------------------------
@@ -573,6 +574,7 @@ func _apply_shader_params(params: Dictionary) -> void:
 		"waveform_base": true,
 		"offline": true,
 		"offline_mode": true,
+		"events": true,
 	}
 	if params.has("features") or params.has("features_path"):
 		var features_val := String(params.get("features", params.get("features_path", "")))
@@ -623,7 +625,6 @@ func _apply_shader_params(params: Dictionary) -> void:
 				# If it's not a texture, just fall through and set the raw string
 
 		mat.set_shader_parameter(k, v)
-
 func set_offline_mode(enable: bool) -> void:
 	_offline_mode = enable
 	if enable:
@@ -1814,6 +1815,7 @@ func _update_overlay_visibility() -> void:
 
 func _parse_tracklist() -> void:
 	_cues.clear()
+	_cue_event_state.clear()
 	var lines: PackedStringArray = []
 
 	if tracklist_path != "":
@@ -1870,6 +1872,11 @@ func _parse_tracklist() -> void:
 		if sec < 0.0:
 			continue
 
+		var events: Array = []
+		if params is Dictionary and (params as Dictionary).has("events"):
+			events = _parse_tracklist_events((params as Dictionary).get("events"), sec)
+			(params as Dictionary).erase("events")
+
 		var cue := {
 			"t": sec,
 			"title": title,
@@ -1878,6 +1885,8 @@ func _parse_tracklist() -> void:
 			"duration_hint": duration_hint,
 			"explicit_end": explicit_end,
 		}
+		if !events.is_empty():
+			cue["events"] = events
 		_cues.append(cue)
 
 	_cues.sort_custom(func(a, b): return a["t"] < b["t"])
@@ -1901,6 +1910,66 @@ func _parse_tracklist() -> void:
 	if debug_log_tracklist:
 		_log_tracklist_debug()
 	_update_track_overlay(_last_play_pos)
+
+func _parse_tracklist_events(raw_events, cue_start: float) -> Array:
+	var events: Array = []
+	if raw_events == null:
+		return events
+	if !(raw_events is Array):
+		push_warning("Tracklist events must be an array of {t,set} dictionaries.")
+		return events
+	for entry in (raw_events as Array):
+		if !(entry is Dictionary):
+			continue
+		var event_dict := entry as Dictionary
+		var when_val = event_dict.get("t", event_dict.get("time", null))
+		var set_params = event_dict.get("set", {})
+		if !(set_params is Dictionary) or (set_params as Dictionary).is_empty():
+			continue
+		var set_copy := (set_params as Dictionary).duplicate(true)
+		var absolute := bool(event_dict.get("absolute", false))
+		if event_dict.has("relative"):
+			absolute = !bool(event_dict.get("relative", true))
+		var resolved := _resolve_event_time(when_val, cue_start, absolute)
+		if resolved < 0.0:
+			continue
+		events.append({
+			"t": resolved,
+			"set": set_copy,
+		})
+	if events.size() > 1:
+		events.sort_custom(func(a, b): return float(a.get("t", 0.0)) < float(b.get("t", 0.0)))
+	return events
+
+func _resolve_event_time(value, cue_start: float, absolute: bool) -> float:
+	var seconds := _coerce_seconds(value)
+	if seconds < 0.0:
+		return -1.0
+	if absolute:
+		return seconds
+	return cue_start + seconds
+
+func _coerce_seconds(value) -> float:
+	match typeof(value):
+		TYPE_FLOAT:
+			if value < 0.0:
+				return -1.0
+			return float(value)
+		TYPE_INT:
+			if value < 0:
+				return -1.0
+			return float(value)
+		TYPE_STRING:
+			var text := String(value).strip_edges()
+			if text == "":
+				return -1.0
+			if text.find(":") >= 0:
+				return _parse_timestamp_to_seconds(text)
+			var numeric := text.to_float()
+			if numeric < 0.0:
+				return -1.0
+			return numeric
+	return -1.0
 
 func _open_tracklist_source(raw_path: String) -> FileAccess:
 	var candidates: Array[String] = []
@@ -1966,6 +2035,17 @@ func _log_tracklist_debug() -> void:
 		print(line)
 		if params is Dictionary and (params as Dictionary).size() > 0:
 			print("    params=%s" % JSON.stringify(params))
+		var events = cue.get("events", [])
+		if events is Array and !(events as Array).is_empty():
+			for event_entry in (events as Array):
+				if !(event_entry is Dictionary):
+					continue
+				var event_dict := event_entry as Dictionary
+				var event_time := float(event_dict.get("t", 0.0))
+				var rel_time := max(event_time - t_val, 0.0)
+				var rel_clock := _format_clock(rel_time)
+				var event_params = event_dict.get("set", {})
+				print("    event @ %s -> %s" % [rel_clock, JSON.stringify(event_params)])
 
 func _parse_timestamp_to_seconds(ts: String) -> float:
 	# supports M:SS, MM:SS, H:MM:SS
@@ -2040,13 +2120,14 @@ func _update_track_overlay(now_sec: float) -> void:
 	var cue: Dictionary = {}
 	var cue_valid := false
 	var cue_changed := false
+	var idx := -1
 
 	if _cues.is_empty():
 		if _current_cue_idx != -1:
 			_current_cue_idx = -1
 			cue_changed = true
 	else:
-		var idx := clampi(_find_current_cue_index(now_sec), 0, _cues.size() - 1)
+		idx = clampi(_find_current_cue_index(now_sec), 0, _cues.size() - 1)
 		cue = _cues[idx]
 		cue_valid = true
 		if idx != _current_cue_idx:
@@ -2061,6 +2142,9 @@ func _update_track_overlay(now_sec: float) -> void:
 		if p is Dictionary and (p as Dictionary).size() > 0:
 			_apply_shader_params(p)
 
+	if cue_valid:
+		_apply_cue_events_for_time(idx, cue, now_sec, cue_changed)
+
 	if overlay_enabled:
 		if _title_label != null:
 			if cue_valid:
@@ -2072,6 +2156,65 @@ func _update_track_overlay(now_sec: float) -> void:
 
 	if _time_label != null:
 		_time_label.text = _format_clock(now_sec)
+
+
+func _apply_cue_events_for_time(idx: int, cue: Dictionary, now_sec: float, cue_changed: bool) -> void:
+	if idx < 0:
+		return
+	var events = cue.get("events", [])
+	if !(events is Array):
+		_cue_event_state[idx] = -1
+		return
+	var event_list := events as Array
+	if event_list.is_empty():
+		_cue_event_state[idx] = -1
+		return
+
+	var prev_idx := int(_cue_event_state.get(idx, -1))
+	if cue_changed:
+		prev_idx = -1
+
+	var epsilon := 0.0005
+	var target_idx := -1
+	for i in range(event_list.size()):
+		var event_item = event_list[i]
+		if !(event_item is Dictionary):
+			continue
+		var event_dict := event_item as Dictionary
+		var event_time := float(event_dict.get("t", -1.0))
+		if event_time <= now_sec + epsilon:
+			target_idx = i
+		else:
+			break
+
+	var need_reset := false
+	if prev_idx > target_idx:
+		need_reset = true
+	elif prev_idx >= 0 and prev_idx < event_list.size():
+		var prev_entry = event_list[prev_idx]
+		if prev_entry is Dictionary:
+			var prev_time := float((prev_entry as Dictionary).get("t", -1.0))
+			if prev_time > now_sec + epsilon:
+				need_reset = true
+
+	if need_reset:
+		var base_params = cue.get("params", {})
+		if base_params is Dictionary and (base_params as Dictionary).size() > 0:
+			_apply_shader_params(base_params)
+		prev_idx = -1
+
+	if target_idx >= prev_idx + 1:
+		for i in range(prev_idx + 1, target_idx + 1):
+			if i < 0 or i >= event_list.size():
+				continue
+			var ev_entry = event_list[i]
+			if !(ev_entry is Dictionary):
+				continue
+			var ev_params = (ev_entry as Dictionary).get("set", {})
+			if ev_params is Dictionary and (ev_params as Dictionary).size() > 0:
+				_apply_shader_params(ev_params)
+
+	_cue_event_state[idx] = target_idx
 
 
 func set_paused_playback_position(pos: float) -> void:
