@@ -39,3 +39,18 @@ When a tracklist is supplied, the renderer will automatically look up the entry 
 * Provide `--track <index>` to force a specific entry when you want to ignore timestamps; the renderer will still honour a start override if one is provided.
 
 The CLI log now reports which tracklist entry is active and the corresponding time window so the relationship between these flags is explicit.
+
+Tracklist `set=` payloads accept an optional `events` array when you need to change shader uniforms mid-track. Each entry contains a timestamp (`t`) expressed as `M:SS`, `H:MM:SS`, or raw seconds along with a nested `set` dictionary describing the override to apply once that playhead time is reached. For example:
+
+```text
+0:00 Cosmic Gateways | shader=ARC_STORM | set={
+  "base_tint": [0.25, 0.55, 1.30],
+  "glow": 1.35,
+  "events": [
+    { "t": "01:30", "set": { "base_tint": [0.65, 0.20, 0.95] } },
+    { "t": "02:40", "set": { "base_tint": [1.10, 1.10, 1.10], "glow": 1.45 } }
+  ]
+}
+```
+
+When the playhead crosses 01:30 the `base_tint` uniform updates to `[0.65, 0.20, 0.95]`. At 02:40 both `base_tint` and `glow` are set to their new values. Event timestamps are relative to the cue's start time by default; set `"absolute": true` on an event when you need to schedule against the full tracklist timeline.
