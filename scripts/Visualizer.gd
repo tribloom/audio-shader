@@ -24,7 +24,8 @@ extends Node2D
 	"RIBBON_TRAILS",  #ai
 	"ATANS_BEGONE",
 	"OVERSATURATED_WEB",
-	"JASZ_UNIVERSE","BARS_PLUS",
+	"JASZ_UNIVERSE",
+	"BARS_PLUS",
 	"FALLING_STRIPES",
 	"MANDELBOX_SWEEPER",
 	"AUDIO_VISUALIZER",
@@ -86,13 +87,24 @@ extends Node2D
 	"BUFFERED_ESPIAL",
 	"PORTAL_TUNNEL", #ai
 	"RIBBON_ORBITALS", #ai
-
+	"RADIAL_RING_AUDIO",
+	"FFT",
+	"BUFFER_TILE_WARP",
+	"JULIES_DUNES",
+	"SPECTRAL_DISK",
+	"RAYMARCH_DROP",
+	"JULIA_GRID",
 
 ]      # e.g. ["ARCS", "STARFIELD"]
 @export var extra_shader_materials: Array[ShaderMaterial] = []  # same length as names
 
 @export var buffer_a_material: ShaderMaterial
-@export var buffer_override_names: PackedStringArray = []
+@export var buffer_override_names: PackedStringArray = [
+	"BUFFER_TILE_WARP",
+	"FFT",
+	"BUFFERED_ESPIAL",
+	"JULIES_DUNES"
+]
 @export var buffer_override_materials: Array[ShaderMaterial] = []
 
 var _name_to_mode: Dictionary = {}          # "CHROMA" -> Mode.CHROMA
@@ -2042,7 +2054,7 @@ func _log_tracklist_debug() -> void:
 					continue
 				var event_dict := event_entry as Dictionary
 				var event_time := float(event_dict.get("t", 0.0))
-				var rel_time := max(event_time - t_val, 0.0)
+				var rel_time = max(event_time - t_val, 0.0)
 				var rel_clock := _format_clock(rel_time)
 				var event_params = event_dict.get("set", {})
 				print("    event @ %s -> %s" % [rel_clock, JSON.stringify(event_params)])

@@ -214,7 +214,7 @@ vec3 apply_center_tint(vec3 col, vec3 rd, vec3 ww, vec4 bands, float drive){
     float focus_dynamic = mix(center_focus, focus_min, clamp(flash_norm, 0.0, 1.0));
     float center_mask = pow(align, focus_dynamic);
     float halo_mask = pow(align, max(focus_dynamic * 0.5, 1.0));
-	
+
     // *** IMPORTANT: mix BEFORE tonemapping so it actually tints the near-white core ***
         float amt = center_mask * (0.5 + flash_norm);
     col = mix(col, band_col, clamp(amt, 0.0, 1.0));

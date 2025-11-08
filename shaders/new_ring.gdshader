@@ -14,10 +14,16 @@ uniform float bass_thresh   = 0.20;   // outward emits only if bass >= threshold
 uniform float treble_thresh = 0.20;   // inward emits only if treble >= threshold
 
 // ---- Color (base ring can drift; pulses freeze at emission) ----
-uniform float hue_period_s = 10.0;    // seconds per hue cycle (0 disables drift)
-uniform float saturation   = 0.95;
-uniform float value        = 1.00;
-
+//uniform float hue_period_s = 10.0;    // seconds per hue cycle (0 disables drift)
+//uniform float saturation   = 0.95;
+//uniform float value        = 1.00;
+uniform int   color_mode        = 0;                  // 0: rainbow, 1: palette, 2: solid color
+uniform float hue_period_s      = 10.0;               // seconds per hue cycle (0 disables drift)
+uniform float saturation        = 0.95;
+uniform float value             = 1.00;
+uniform vec4  palette_color     = vec4(0.85, 0.55, 0.15, 1.0);
+uniform float palette_variation = 0.55;               // 0 keeps pulses at palette_color, 1.0 full variation
+uniform vec4  solid_color       = vec4(1.0, 1.0, 1.0, 1.0);
 // ---- Ripple trains (max “visible” echoes to draw) ----
 uniform int   pulses_max   = 6;       // echoes each direction (0..10)
 uniform float falloff      = 0.70;    // per-echo brightness falloff (0..1)
@@ -56,6 +62,37 @@ vec3 hsv2rgb(vec3 c) {
     return c.z * mix(vec3(1.0), clamp(q - 1.0, 0.0, 1.0), c.y);
 }
 
+vec3 palette_variant(float phase, float mix_strength) {
+    vec3 base_rgb = palette_color.rgb;
+    float osc = sin(phase * TAU) * 0.5 + 0.5; // 0..1 variation
+    vec3 lighter = mix(base_rgb, vec3(1.0), palette_variation);
+    vec3 darker  = mix(base_rgb, base_rgb * 0.25, palette_variation);
+    vec3 tinted  = mix(darker, lighter, osc);
+    return mix(base_rgb, tinted, clamp(mix_strength, 0.0, 1.0));
+}
+
+vec3 base_color_from_mode(float around, float drift) {
+    if (color_mode == 0) {
+        float base_hue = fract(around + drift);
+        return hsv2rgb(vec3(base_hue, saturation, value));
+    }
+    if (color_mode == 1) {
+        return palette_color.rgb;
+    }
+    return solid_color.rgb;
+}
+
+vec3 pulse_color_from_mode(float around, float drift, float mix_strength) {
+    if (color_mode == 0) {
+        float hue = fract(around + drift);
+        return hsv2rgb(vec3(hue, saturation, value));
+    }
+    if (color_mode == 1) {
+        return palette_variant(around + drift, mix_strength);
+    }
+    return solid_color.rgb;
+}
+
 // Age → distance with slowdown
 float travel_slow(float age, float speed) {
     if (slow_k <= 1e-5) return speed * age; // linear fallback
@@ -86,8 +123,9 @@ void fragment() {
 
     // Base color may drift slowly; pulses will freeze at emission
     float base_drift = (hue_period_s > 0.0) ? (TIME / hue_period_s) : 0.0;
-    float base_hue   = fract(around + base_drift);
-    vec3  base_rgb   = hsv2rgb(vec3(base_hue, saturation, value));
+    //float base_hue   = fract(around + base_drift);
+    //vec3  base_rgb   = hsv2rgb(vec3(base_hue, saturation, value));
+	vec3  base_rgb   = base_color_from_mode(around, base_drift);
     vec3  col        = base_rgb * lum;
 
     // --- OUTWARD (bass) ---
@@ -125,8 +163,14 @@ void fragment() {
         // Freeze color at EMISSION time (now - age)
         float t_emit     = TIME - age;
         float drift_emit = (hue_period_s > 0.0) ? (t_emit / hue_period_s) : 0.0;
-        float hue_i      = fract(around + drift_emit);
-        vec3  rgb_i      = hsv2rgb(vec3(hue_i, saturation, value));
+        //float hue_i      = fract(around + drift_emit);
+        //vec3  rgb_i      = hsv2rgb(vec3(hue_i, saturation, value));
+        float idx_norm   = 0.0;
+        if (N > 1) {
+            idx_norm = float(i) / float(N - 1);
+        }
+        float mix_strength = mix(0.35, 1.0, idx_norm);
+        vec3  rgb_i      = pulse_color_from_mode(around, drift_emit, mix_strength);
 
         col += rgb_i * (ring_band(p, r_i, width) * w);
     }
@@ -153,8 +197,14 @@ void fragment() {
 
         float t_emit     = TIME - age;
         float drift_emit = (hue_period_s > 0.0) ? (t_emit / hue_period_s) : 0.0;
-        float hue_j      = fract(around + drift_emit);
-        vec3  rgb_j      = hsv2rgb(vec3(hue_j, saturation, value));
+        //float hue_j      = fract(around + drift_emit);
+        //vec3  rgb_j      = hsv2rgb(vec3(hue_j, saturation, value));
+        float idx_norm   = 0.0;
+        if (N > 1) {
+            idx_norm = float(j) / float(N - 1);
+        }
+        float mix_strength = mix(0.35, 1.0, idx_norm);
+        vec3  rgb_j      = pulse_color_from_mode(around, drift_emit, mix_strength);
 
         col += rgb_j * (ring_band(p, r_j, width) * w);
     }
