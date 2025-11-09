@@ -145,6 +145,16 @@ var _offline_wave_samples: PackedFloat32Array = PackedFloat32Array()
 var _offline_wave_rate: float = 0.0
 var _offline_wave_duration: float = 0.0
 
+const TRACKLIST_PARAM_HOUSEKEEPING := {
+	"features": true,
+	"features_path": true,
+	"waveform": true,
+	"waveform_base": true,
+	"offline": true,
+	"offline_mode": true,
+	"events": true,
+}
+
 # Normalization
 @export var db_min: float = -80.0
 @export var db_max: float =  -6.0
@@ -579,15 +589,6 @@ func set_shader_by_name(name: String) -> bool:
 func _apply_shader_params(params: Dictionary) -> void:
 	if params.is_empty():
 		return
-	var reserved := {
-		"features": true,
-		"features_path": true,
-		"waveform": true,
-		"waveform_base": true,
-		"offline": true,
-		"offline_mode": true,
-		"events": true,
-	}
 	if params.has("features") or params.has("features_path"):
 		var features_val := String(params.get("features", params.get("features_path", "")))
 		var resolved_features := _normalize_resource_path(features_val)
@@ -603,11 +604,10 @@ func _apply_shader_params(params: Dictionary) -> void:
 	if params.has("offline") or params.has("offline_mode"):
 		var offline_flag = params.get("offline_mode", params.get("offline", false))
 		set_offline_mode(bool(offline_flag))
-	var mat := color_rect.material as ShaderMaterial
-	if mat == null:
-		return
+
+	var resolved_params: Dictionary = {}
 	for k in params.keys():
-		if reserved.has(k):
+		if TRACKLIST_PARAM_HOUSEKEEPING.has(k):
 			continue
 		var v = params[k]
 		if v is Array:
@@ -621,22 +621,48 @@ func _apply_shader_params(params: Dictionary) -> void:
 		if typeof(v) == TYPE_STRING:
 			var s := String(v)
 
-			# allow "null" to clear a param
 			if s == "null":
-				mat.set_shader_parameter(k, null)
+				resolved_params[k] = null
 				continue
 
-			# normalize and attempt to load textures/resources
 			var resolved := _normalize_resource_path(s)
 			if resolved.begins_with("res://") or resolved.begins_with("user://"):
 				var res := load(resolved)
-				print(res)
-				if res is Texture2D:
-					mat.set_shader_parameter(k, res)
-					continue
-				# If it's not a texture, just fall through and set the raw string
+				if res != null:
+					v = res
+				else:
+					v = s
+			else:
+				v = s
+		resolved_params[k] = v
 
-		mat.set_shader_parameter(k, v)
+	if resolved_params.is_empty():
+		return
+
+	var targets: Array[ShaderMaterial] = []
+	var mat: ShaderMaterial = null
+	if color_rect != null:
+		mat = color_rect.material as ShaderMaterial
+	if mat != null:
+		targets.append(mat)
+
+	var buffer_mat: ShaderMaterial = _active_buffer_material
+	if buffer_mat == null:
+		if _default_buffer_material != null:
+			buffer_mat = _default_buffer_material
+		elif buffer_a_material != null:
+			buffer_mat = buffer_a_material
+	if buffer_mat != null and !targets.has(buffer_mat):
+		targets.append(buffer_mat)
+
+	if targets.is_empty():
+		return
+
+	var param_keys := resolved_params.keys()
+	for shader_mat in targets:
+		for k in param_keys:
+			shader_mat.set_shader_parameter(k, resolved_params[k])
+
 func set_offline_mode(enable: bool) -> void:
 	_offline_mode = enable
 	if enable:

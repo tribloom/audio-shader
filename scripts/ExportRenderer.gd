@@ -862,40 +862,62 @@ func _find_frame_index_for_time(target_time: float, frame_count: int) -> int:
 func _apply_tracklist_properties(node: Node) -> void:
 	if node == null:
 		return
-	var has_path := _has_property(node, "tracklist_path")
-	var has_lines := _has_property(node, "tracklist_lines")
 	if track_index_specified and tracklist_inline.size() > 0:
-		if has_path:
-			node.set("tracklist_path", "")
-		if has_lines:
-			node.set("tracklist_lines", tracklist_inline)
+		_set_property_deep(node, "tracklist_path", "")
+		_set_property_deep(node, "tracklist_lines", tracklist_inline)
 	elif tracklist_path != "":
-		if has_path:
-			node.set("tracklist_path", tracklist_path)
+		_set_property_deep(node, "tracklist_path", tracklist_path)
+
+	if !selected_track_entry.is_empty():
+		var params = selected_track_entry.get("params", {})
+		if params is Dictionary and (params as Dictionary).size() > 0:
+			_call_method_deep(node, "_apply_shader_params", [params])
 
 func _apply_overlay_preference(node: Node) -> void:
 	if node == null:
 		return
-	if _has_property(node, "overlay_enabled"):
-		node.set("overlay_enabled", overlay_enabled)
+	_set_property_deep(node, "overlay_enabled", overlay_enabled)
 
 func _apply_selected_track_entry() -> void:
 	if selected_track_entry.is_empty() or root_node == null:
 		return
-	if root_node.has_method("apply_tracklist_entry"):
-		root_node.call("apply_tracklist_entry", selected_track_entry)
+	if _call_method_deep(root_node, "apply_tracklist_entry", [selected_track_entry]):
 		return
 	var shader_name := String(selected_track_entry.get("shader", ""))
-	if shader_name != "" and root_node.has_method("set_shader_by_name"):
-		root_node.call("set_shader_by_name", shader_name)
+	if shader_name != "":
+		_call_method_deep(root_node, "set_shader_by_name", [shader_name])
 	var params = selected_track_entry.get("params", {})
-	if params is Dictionary and (params as Dictionary).size() > 0 and root_node.has_method("_apply_shader_params"):
-		root_node.call("_apply_shader_params", params)
+	if params is Dictionary and (params as Dictionary).size() > 0:
+		_call_method_deep(root_node, "_apply_shader_params", [params])
 
 func _has_property(obj: Object, prop: String) -> bool:
 	if obj == null:
 		return false
 	for item in obj.get_property_list():
 		if String(item.name) == prop:
+			return true
+	return false
+
+func _set_property_deep(node: Node, prop: String, value) -> bool:
+	if node == null:
+		return false
+	if _has_property(node, prop):
+		node.set(prop, value)
+		return true
+	for child in node.get_children():
+		var child_node := child as Node
+		if child_node != null and _set_property_deep(child_node, prop, value):
+			return true
+	return false
+
+func _call_method_deep(node: Node, method: StringName, args: Array = []) -> bool:
+	if node == null:
+		return false
+	if node.has_method(method):
+		node.callv(method, args)
+		return true
+	for child in node.get_children():
+		var child_node := child as Node
+		if child_node != null and _call_method_deep(child_node, method, args):
 			return true
 	return false
