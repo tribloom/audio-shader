@@ -221,6 +221,7 @@ var _resume_from_pos: float = 0.0
 
 # Cache shader uniform names for quick lookups when binding parameters.
 var _shader_uniform_cache: Dictionary = {}
+var _unsupported_param_marker := RefCounted.new()
 
 var _buffer_viewport_texture: Texture2D = null
 
@@ -609,59 +610,154 @@ func _apply_shader_params(params: Dictionary) -> void:
 	for k in params.keys():
 		if TRACKLIST_PARAM_HOUSEKEEPING.has(k):
 			continue
-		var v = params[k]
-		if v is Array:
-			var a := v as Array
-			if a.size() == 2:
-				v = Vector2(a[0], a[1])
-			elif a.size() == 3:
-				v = Color(a[0], a[1], a[2], 1.0) # works for vec3/color
-			elif a.size() == 4:
-				v = Color(a[0], a[1], a[2], a[3])
+		if k == "shader":
+			var shader_name = params[k]
+			if typeof(shader_name) == TYPE_STRING:
+				if set_shader_by_name(String(shader_name)):
+					mat = color_rect.material as ShaderMaterial
+					if mat == null:
+						return
+			else:
+				push_warning("Shader override must be a string: %s" % [str(shader_name)])
+			continue
+		if !_shader_has_uniform(mat, k):
+			var shader_label := ""
+			if _material_to_name.has(mat):
+				shader_label = String(_material_to_name[mat])
+			elif mat.shader != null:
+				shader_label = String(mat.shader.resource_path)
+			if shader_label == "":
+				shader_label = str(mat)
+			push_warning("Shader '%s' has no uniform named '%s'" % [shader_label, k])
+			continue
+		var v = _coerce_param_value(params[k])
+		if typeof(v) == TYPE_OBJECT and v == _unsupported_param_marker:
+			push_warning("Unsupported shader param '%s' of type %s" % [k, typeof(params[k])])
+			continue
 		if typeof(v) == TYPE_STRING:
 			var s := String(v)
-
 			if s == "null":
 				resolved_params[k] = null
 				continue
-
 			var resolved := _normalize_resource_path(s)
 			if resolved.begins_with("res://") or resolved.begins_with("user://"):
 				var res := load(resolved)
-				if res != null:
-					v = res
-				else:
-					v = s
-			else:
-				v = s
-		resolved_params[k] = v
+				if res is Texture2D:
+					mat.set_shader_parameter(k, res)
+					continue
+		mat.set_shader_parameter(k, v)
 
-	if resolved_params.is_empty():
-		return
+func _coerce_param_value(value):
+	var value_type := typeof(value)
+	if value_type == TYPE_NIL:
+		return null
+	if value_type == TYPE_BOOL or value_type == TYPE_INT or value_type == TYPE_FLOAT:
+		return value
+	if value is Color or value is Vector2 or value is Vector3 or value is Vector4:
+		return value
+	if value is Vector2i or value is Vector3i or value is Vector4i:
+		return value
+	if value is Quaternion or value is Basis or value is Transform2D or value is Transform3D:
+		return value
+	if value_type == TYPE_STRING:
+		return String(value)
+	if value is Array:
+		return _coerce_array_to_uniform(value as Array)
+	if value is PackedFloat32Array:
+		return _coerce_packed_float_array(value as PackedFloat32Array)
+	if value is PackedInt32Array:
+		return _coerce_packed_int_array(value as PackedInt32Array)
+	if value is PackedColorArray:
+		return _coerce_packed_color_array(value as PackedColorArray)
+	if value is PackedVector2Array:
+		return (value as PackedVector2Array).duplicate()
+	if value is PackedVector3Array:
+		return (value as PackedVector3Array).duplicate()
+	if value is PackedVector4Array:
+		return (value as PackedVector4Array).duplicate()
+	if value is PackedStringArray:
+		return (value as PackedStringArray).duplicate()
+	if value is PackedByteArray:
+		return (value as PackedByteArray).duplicate()
+	if value is Texture2D:
+		return value
+	return _unsupported_param_marker
 
-	var targets: Array[ShaderMaterial] = []
-	var mat: ShaderMaterial = null
-	if color_rect != null:
-		mat = color_rect.material as ShaderMaterial
-	if mat != null:
-		targets.append(mat)
+func _coerce_array_to_uniform(arr: Array):
+	if arr.is_empty():
+		return []
+	if _array_is_numeric(arr):
+		return _coerce_numeric_array(arr)
+	var converted: Array = []
+	converted.resize(arr.size())
+	for i in range(arr.size()):
+		var element = _coerce_param_value(arr[i])
+		if typeof(element) == TYPE_OBJECT and element == _unsupported_param_marker:
+			return _unsupported_param_marker
+		converted[i] = element
+	return converted
 
-	var buffer_mat: ShaderMaterial = _active_buffer_material
-	if buffer_mat == null:
-		if _default_buffer_material != null:
-			buffer_mat = _default_buffer_material
-		elif buffer_a_material != null:
-			buffer_mat = buffer_a_material
-	if buffer_mat != null and !targets.has(buffer_mat):
-		targets.append(buffer_mat)
+func _coerce_numeric_array(arr: Array):
+	var size := arr.size()
+	if size == 1:
+		return float(arr[0])
+	if size == 2:
+		return Vector2(float(arr[0]), float(arr[1]))
+	if size == 3:
+		return Vector3(float(arr[0]), float(arr[1]), float(arr[2]))
+	if size == 4:
+		return Color(float(arr[0]), float(arr[1]), float(arr[2]), float(arr[3]))
+	var packed := PackedFloat32Array()
+	packed.resize(size)
+	for i in range(size):
+		packed[i] = float(arr[i])
+	return packed
 
-	if targets.is_empty():
-		return
+func _coerce_packed_float_array(arr: PackedFloat32Array):
+	var size := arr.size()
+	if size == 0:
+		return PackedFloat32Array()
+	if size == 1:
+		return arr[0]
+	if size == 2:
+		return Vector2(arr[0], arr[1])
+	if size == 3:
+		return Vector3(arr[0], arr[1], arr[2])
+	if size == 4:
+		return Color(arr[0], arr[1], arr[2], arr[3])
+	return arr.duplicate()
 
-	var param_keys := resolved_params.keys()
-	for shader_mat in targets:
-		for k in param_keys:
-			shader_mat.set_shader_parameter(k, resolved_params[k])
+func _coerce_packed_int_array(arr: PackedInt32Array):
+	var size := arr.size()
+	if size == 0:
+		return PackedInt32Array()
+	if size == 1:
+		return float(arr[0])
+	if size == 2:
+		return Vector2(float(arr[0]), float(arr[1]))
+	if size == 3:
+		return Vector3(float(arr[0]), float(arr[1]), float(arr[2]))
+	if size == 4:
+		return Color(float(arr[0]), float(arr[1]), float(arr[2]), float(arr[3]))
+	var packed := PackedFloat32Array()
+	packed.resize(size)
+	for i in range(size):
+		packed[i] = float(arr[i])
+	return packed
+
+func _coerce_packed_color_array(arr: PackedColorArray):
+	if arr.size() == 0:
+		return PackedColorArray()
+	if arr.size() == 1:
+		return arr[0]
+	return arr.duplicate()
+
+func _array_is_numeric(arr: Array) -> bool:
+	for v in arr:
+		var t := typeof(v)
+		if t != TYPE_FLOAT and t != TYPE_INT:
+			return false
+	return true
 
 func set_offline_mode(enable: bool) -> void:
 	_offline_mode = enable
@@ -2208,13 +2304,38 @@ func _apply_cue_events_for_time(idx: int, cue: Dictionary, now_sec: float, cue_c
 		_cue_event_state[idx] = -1
 		return
 
-	var prev_idx := int(_cue_event_state.get(idx, -1))
+	var prev_idx_original := int(_cue_event_state.get(idx, -1))
 	if cue_changed:
-		prev_idx = -1
+		prev_idx_original = -1
 
 	var epsilon := 0.0005
 	var target_idx := -1
-	for i in range(event_list.size()):
+	var search_start := 0
+	var need_reset := false
+	var prev_idx := prev_idx_original
+	# Only scan forward from the last applied event so large timelines don't
+	# repeatedly walk the entire array every frame.
+
+	if prev_idx >= 0 and prev_idx < event_list.size():
+		var prev_entry = event_list[prev_idx]
+		if prev_entry is Dictionary:
+			var prev_time := float((prev_entry as Dictionary).get("t", -1.0))
+			if prev_time > now_sec + epsilon:
+				need_reset = true
+				prev_idx = -1
+			else:
+				target_idx = prev_idx
+				search_start = prev_idx + 1
+		else:
+			need_reset = true
+			prev_idx = -1
+	elif prev_idx >= event_list.size():
+		need_reset = true
+		prev_idx = -1
+	else:
+		prev_idx = -1
+
+	for i in range(search_start, event_list.size()):
 		var event_item = event_list[i]
 		if !(event_item is Dictionary):
 			continue
@@ -2225,15 +2346,8 @@ func _apply_cue_events_for_time(idx: int, cue: Dictionary, now_sec: float, cue_c
 		else:
 			break
 
-	var need_reset := false
-	if prev_idx > target_idx:
+	if prev_idx_original > target_idx:
 		need_reset = true
-	elif prev_idx >= 0 and prev_idx < event_list.size():
-		var prev_entry = event_list[prev_idx]
-		if prev_entry is Dictionary:
-			var prev_time := float((prev_entry as Dictionary).get("t", -1.0))
-			if prev_time > now_sec + epsilon:
-				need_reset = true
 
 	if need_reset:
 		var base_params = cue.get("params", {})
