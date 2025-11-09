@@ -1,9 +1,8 @@
-[gd_scene load_steps=203 format=3 uid="uid://cg7hpc6lknr54"]
+[gd_scene load_steps=201 format=3 uid="uid://cg7hpc6lknr54"]
 
 [ext_resource type="Script" uid="uid://2s76n2g5iq3j" path="res://scripts/Visualizer.gd" id="1"]
 [ext_resource type="Shader" uid="uid://ckwpxocs2mtyv" path="res://shaders/hexagone.gdshader" id="2_lvnau"]
 [ext_resource type="Shader" uid="uid://bfy631s1a8xdr" path="res://shaders/new_ring.gdshader" id="3_63417"]
-[ext_resource type="Shader" uid="uid://rcl184ngcudk" path="res://shaders/chromatic_resonance.gdshader" id="3_fsh2l"]
 [ext_resource type="Shader" uid="uid://0or45gqvbagi" path="res://shaders/ring.gdshader" id="3_tnguw"]
 [ext_resource type="Shader" uid="uid://1aktc52ld55a" path="res://shaders/spectrum.gdshader" id="4_qv6cl"]
 [ext_resource type="Shader" uid="uid://21unhxbpujja" path="res://shaders/spectrum_line.gdshader" id="5_6ieok"]
@@ -1246,14 +1245,6 @@ shader_parameter/audio_floor = 0.02
 shader = ExtResource("84_bnpoi")
 shader_parameter/buffer_a_size = Vector2(1920, 1080)
 
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_j560f"]
-shader = ExtResource("3_fsh2l")
-shader_parameter/level = 0.0
-shader_parameter/kick = 0.0
-shader_parameter/aspect = 1.77778
-shader_parameter/locked_aspect = 2.0
-shader_parameter/music_reaction = 0.8
-
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_era08"]
 shader = ExtResource("3_63417")
 shader_parameter/aspect = 1.0
@@ -1497,7 +1488,7 @@ script = ExtResource("1")
 extra_shader_materials = Array[ShaderMaterial]([SubResource("ShaderMaterial_tqmyl"), SubResource("ShaderMaterial_bvli8"), SubResource("ShaderMaterial_w1g30"), SubResource("ShaderMaterial_lvnau"), SubResource("ShaderMaterial_npcw7"), SubResource("ShaderMaterial_mpre3"), SubResource("ShaderMaterial_n122m"), SubResource("ShaderMaterial_0a5nj"), SubResource("ShaderMaterial_fkjsi"), SubResource("ShaderMaterial_ij8vb"), SubResource("ShaderMaterial_ou6xn"), SubResource("ShaderMaterial_kwimc"), SubResource("ShaderMaterial_8xij6"), SubResource("ShaderMaterial_3jun3"), SubResource("ShaderMaterial_6xduc"), SubResource("ShaderMaterial_xbqxu"), SubResource("ShaderMaterial_wy6vq"), SubResource("ShaderMaterial_bnpoi"), SubResource("ShaderMaterial_o0mw7"), SubResource("ShaderMaterial_fqwkm"), SubResource("ShaderMaterial_kbp6i"), SubResource("ShaderMaterial_meos5"), SubResource("ShaderMaterial_oq7wg"), SubResource("ShaderMaterial_f17lq"), SubResource("ShaderMaterial_swuvo"), SubResource("ShaderMaterial_a3qwx"), SubResource("ShaderMaterial_ii33l"), SubResource("ShaderMaterial_0k0t4"), SubResource("ShaderMaterial_hbxid"), SubResource("ShaderMaterial_nbxlb"), SubResource("ShaderMaterial_y1ht4"), SubResource("ShaderMaterial_fecf4"), SubResource("ShaderMaterial_og0j4"), SubResource("ShaderMaterial_ir4bg"), SubResource("ShaderMaterial_2og57"), SubResource("ShaderMaterial_08xhs"), SubResource("ShaderMaterial_b7mur"), SubResource("ShaderMaterial_bmp84"), SubResource("ShaderMaterial_o4jmb"), SubResource("ShaderMaterial_w3kxe"), SubResource("ShaderMaterial_kwhl1"), SubResource("ShaderMaterial_gxkjj"), SubResource("ShaderMaterial_4y6ch"), SubResource("ShaderMaterial_jfxei"), SubResource("ShaderMaterial_t154n"), SubResource("ShaderMaterial_wdjow"), SubResource("ShaderMaterial_al3y2"), SubResource("ShaderMaterial_bdrea"), SubResource("ShaderMaterial_fm6wb"), SubResource("ShaderMaterial_kytdp"), SubResource("ShaderMaterial_nukbg"), SubResource("ShaderMaterial_pd2s2"), SubResource("ShaderMaterial_olvvk"), SubResource("ShaderMaterial_ysi30"), SubResource("ShaderMaterial_0pfyj"), SubResource("ShaderMaterial_mdbx0"), SubResource("ShaderMaterial_scdkm"), SubResource("ShaderMaterial_x0faw"), SubResource("ShaderMaterial_likon"), SubResource("ShaderMaterial_o4deg"), SubResource("ShaderMaterial_i1j35"), SubResource("ShaderMaterial_ddr0v"), SubResource("ShaderMaterial_2o7ua"), SubResource("ShaderMaterial_hhct4"), SubResource("ShaderMaterial_uweb4"), SubResource("ShaderMaterial_7xex6"), SubResource("ShaderMaterial_uxnr5"), SubResource("ShaderMaterial_bqete"), SubResource("ShaderMaterial_vxm7k"), SubResource("ShaderMaterial_bt5ii"), SubResource("ShaderMaterial_buffer_image"), SubResource("ShaderMaterial_ajntv"), SubResource("ShaderMaterial_kb7ua"), SubResource("ShaderMaterial_soxvl"), SubResource("ShaderMaterial_o0dbt"), SubResource("ShaderMaterial_38sot"), SubResource("ShaderMaterial_mkoou"), SubResource("ShaderMaterial_rbbjq"), SubResource("ShaderMaterial_hl68h"), SubResource("ShaderMaterial_mh3dl"), SubResource("ShaderMaterial_2vf50")])
 buffer_a_material = SubResource("ShaderMaterial_buffer_a")
 buffer_override_materials = Array[ShaderMaterial]([SubResource("ShaderMaterial_t4fn6"), SubResource("ShaderMaterial_fg35c"), SubResource("ShaderMaterial_5vwrj"), SubResource("ShaderMaterial_iivt2")])
-material_chromatic = SubResource("ShaderMaterial_j560f")
+material_chromatic = SubResource("ShaderMaterial_era08")
 material_circle = SubResource("ShaderMaterial_era08")
 material_bars = SubResource("ShaderMaterial_6qqup")
 material_line = SubResource("ShaderMaterial_5h2o6")
