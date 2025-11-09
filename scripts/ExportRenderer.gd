@@ -223,16 +223,49 @@ func _initialize() -> void:
 		has_track_window = true
 
 	var window_offset := 0.0
-	if has_track_window:
-		window_offset = max(track_source_start_time, 0.0)
 	var relative_track_start := 0.0
-	if has_track_window:
-		relative_track_start = max(track_start_time - window_offset, 0.0)
 	var relative_track_end := -1.0
-	if has_track_window and track_end_time > track_start_time:
-		relative_track_end = max(track_end_time - window_offset, 0.0)
+
+	if has_track_window:
+		# For per-track or overridden renders, features/waveform were already loaded
+		# for the specific window (e.g. track_source_start_time..track_source_end_time),
+		# and Visualizer normalizes times to 0..duration_s for that window.
+		if track_index_specified or render_start_override >= 0.0 or render_duration_override > 0.0:
+			window_offset = 0.0
+			relative_track_start = 0.0
+			if track_end_time > track_start_time:
+				# Use full local duration (already matches offline_dur / duration_s)
+				relative_track_end = duration_s
+		else:
+			# Generic windowing over the full features file: use offset math.
+			window_offset = max(track_start_time, 0.0)
+			relative_track_start = max(track_start_time - window_offset, 0.0)
+			if track_end_time > track_start_time:
+				relative_track_end = max(track_end_time - window_offset, 0.0)
+
+	#var window_offset := 0.0
+	#if has_track_window:
+	#	window_offset = max(track_source_start_time, 0.0)
+	#var relative_track_start := 0.0
+	#if has_track_window:
+	#	relative_track_start = max(track_start_time - window_offset, 0.0)
+	#var relative_track_end := -1.0
+	#if has_track_window and track_end_time > track_start_time:
+	#	relative_track_end = max(track_end_time - window_offset, 0.0)
+	
 
 	DirAccess.make_dir_recursive_absolute(out_dir_fs)
+
+	print("[ExportRenderer][DEBUG] relative_track_start=", relative_track_start)
+	print("[ExportRenderer][DEBUG] relative_track_end=", relative_track_end)
+	print("[ExportRenderer][DEBUG] fps=", fps)
+	print("[ExportRenderer][DEBUG] duration_s=", duration_s)
+	print("[ExportRenderer][DEBUG] total_duration_s=", total_duration_s)
+	print("[ExportRenderer][DEBUG] offline_dur=", offline_dur)
+	print("[ExportRenderer][DEBUG] track_duration_hint=", track_duration_hint)
+	print("[ExportRenderer][DEBUG] track_start_time=", track_start_time, " track_end_time=", track_end_time)
+	print("[ExportRenderer][DEBUG] track_source_start_time=", track_source_start_time,
+	  " track_source_end_time=", track_source_end_time)
 
 	# Deterministic frame loop
 	var frames_total: int = int(ceil(duration_s * float(fps)))
@@ -240,6 +273,7 @@ func _initialize() -> void:
 	var frame_start_idx: int = 0
 	if root_node.has_method("get_offline_frame_count"):
 		var offline_frames: int = int(root_node.call("get_offline_frame_count"))
+		print("[ExportRenderer][DEBUG] offline_frames=", offline_frames)
 		if offline_frames > 0:
 			using_offline_frames = true
 			if has_track_window:
@@ -251,6 +285,8 @@ func _initialize() -> void:
 				if target_end > relative_track_start:
 					found_end = _find_frame_index_for_time(target_end, offline_frames)
 				var frame_end_idx: int = clampi(found_end, frame_start_idx, offline_frames)
+				print("[ExportRenderer][DEBUG] frame_start_idx=", frame_start_idx)
+				print("[ExportRenderer][DEBUG] frame_end_idx=", frame_end_idx)
 				frames_total = max(0, frame_end_idx - frame_start_idx)
 			else:
 				frame_start_idx = 0
@@ -260,6 +296,7 @@ func _initialize() -> void:
 		push_warning("No frames to render (duration=%.3fs, fps=%d)." % [duration_s, fps])
 		quit()
 		return
+	print("[ExportRenderer][DEBUG] frames_total=", frames_total)
 	for local_frame in range(frames_total):
 		var source_frame := local_frame
 		if using_offline_frames:
