@@ -1,0 +1,3173 @@
+{
+  "shaders": {
+    "ECHOES_IN_MOTION": {
+      "audio_safety": {
+        "audio_gain_max": 5.5,
+        "audio_gain_min": 3.5
+      },
+      "behavior_flags": {
+        "buffered": true,
+        "has_color_controls": false,
+        "is_glitchy_if_pushed": false
+      },
+      "description": "Ribbon tunnel with smooth rotational motion; excellent for tech trance grooves and drops.",
+      "display_name": "Echoes in Motion",
+      "genres": [
+        "tech trance",
+        "progressive trance"
+      ],
+      "notes": "Good all-rounder. Current defaults based on Voltage Temple in Vol 11.",
+      "presets": {
+        "default": {
+          "sections": {
+            "breakdown": {
+              "uniforms": {
+                "audio_gain": 3.5,
+                "band_contrast": 1.25,
+                "bg_level": 0.22,
+                "brightness": 0.95,
+                "ribbon_count": 5,
+                "ribbon_width": 0.05,
+                "spin_speed": 0.2
+              }
+            },
+            "build": {
+              "uniforms": {
+                "audio_gain": 5.0,
+                "band_contrast": 1.8,
+                "bg_level": 0.12,
+                "brightness": 1.35,
+                "ribbon_count": 8,
+                "ribbon_width": 0.07,
+                "spin_speed": 0.45
+              }
+            },
+            "drop": {
+              "uniforms": {
+                "audio_gain": 5.2,
+                "band_contrast": 1.8,
+                "bg_level": 0.12,
+                "brightness": 1.35,
+                "ribbon_count": 8,
+                "ribbon_width": 0.07,
+                "spin_speed": 0.45
+              }
+            },
+            "groove": {
+              "uniforms": {
+                "audio_gain": 4.4,
+                "band_contrast": 1.5,
+                "bg_level": 0.16,
+                "brightness": 1.2,
+                "ribbon_count": 6,
+                "ribbon_width": 0.06,
+                "spin_speed": 0.35
+              }
+            },
+            "intro": {
+              "uniforms": {
+                "audio_gain": 3.8,
+                "band_contrast": 1.2,
+                "bg_level": 0.2,
+                "brightness": 1.0,
+                "ribbon_count": 4,
+                "ribbon_width": 0.045,
+                "spin_speed": 0.25
+              }
+            },
+            "outro": {
+              "uniforms": {
+                "audio_gain": 4.0,
+                "band_contrast": 1.4,
+                "bg_level": 0.18,
+                "brightness": 1.1,
+                "ribbon_count": 6,
+                "ribbon_width": 0.055,
+                "spin_speed": 0.3
+              }
+            }
+          }
+        },
+        "tech_trance": {
+          "sections": {
+            "breakdown": {
+              "uniforms": {
+                "audio_gain": 3.5,
+                "band_contrast": 1.25,
+                "bg_level": 0.22,
+                "brightness": 0.95,
+                "ribbon_count": 5,
+                "ribbon_width": 0.05,
+                "spin_speed": 0.2
+              }
+            },
+            "build": {
+              "uniforms": {
+                "audio_gain": 5.0,
+                "band_contrast": 1.8,
+                "bg_level": 0.12,
+                "brightness": 1.35,
+                "ribbon_count": 8,
+                "ribbon_width": 0.07,
+                "spin_speed": 0.45
+              }
+            },
+            "drop": {
+              "uniforms": {
+                "audio_gain": 5.2,
+                "band_contrast": 1.8,
+                "bg_level": 0.12,
+                "brightness": 1.35,
+                "ribbon_count": 8,
+                "ribbon_width": 0.07,
+                "spin_speed": 0.45
+              }
+            },
+            "groove": {
+              "uniforms": {
+                "audio_gain": 4.4,
+                "band_contrast": 1.5,
+                "bg_level": 0.16,
+                "brightness": 1.2,
+                "ribbon_count": 6,
+                "ribbon_width": 0.06,
+                "spin_speed": 0.35
+              }
+            },
+            "intro": {
+              "uniforms": {
+                "audio_gain": 3.8,
+                "band_contrast": 1.2,
+                "bg_level": 0.2,
+                "brightness": 1.0,
+                "ribbon_count": 4,
+                "ribbon_width": 0.045,
+                "spin_speed": 0.25
+              }
+            },
+            "outro": {
+              "uniforms": {
+                "audio_gain": 4.0,
+                "band_contrast": 1.4,
+                "bg_level": 0.18,
+                "brightness": 1.1,
+                "ribbon_count": 6,
+                "ribbon_width": 0.055,
+                "spin_speed": 0.3
+              }
+            }
+          }
+        },
+        "progressive": {
+          "sections": {
+            "breakdown": {
+              "uniforms": {
+                "audio_gain": 2.45,
+                "band_contrast": 1.25,
+                "bg_level": 0.22,
+                "brightness": 0.95,
+                "ribbon_count": 5,
+                "ribbon_width": 0.05,
+                "spin_speed": 0.16
+              }
+            },
+            "build": {
+              "uniforms": {
+                "audio_gain": 3.5,
+                "band_contrast": 1.8,
+                "bg_level": 0.12,
+                "brightness": 1.35,
+                "ribbon_count": 8,
+                "ribbon_width": 0.07,
+                "spin_speed": 0.36
+              }
+            },
+            "drop": {
+              "uniforms": {
+                "audio_gain": 3.64,
+                "band_contrast": 1.8,
+                "bg_level": 0.12,
+                "brightness": 1.35,
+                "ribbon_count": 8,
+                "ribbon_width": 0.07,
+                "spin_speed": 0.36
+              }
+            },
+            "groove": {
+              "uniforms": {
+                "audio_gain": 3.08,
+                "band_contrast": 1.5,
+                "bg_level": 0.16,
+                "brightness": 1.2,
+                "ribbon_count": 6,
+                "ribbon_width": 0.06,
+                "spin_speed": 0.28
+              }
+            },
+            "intro": {
+              "uniforms": {
+                "audio_gain": 2.66,
+                "band_contrast": 1.2,
+                "bg_level": 0.2,
+                "brightness": 1.0,
+                "ribbon_count": 4,
+                "ribbon_width": 0.045,
+                "spin_speed": 0.2
+              }
+            },
+            "outro": {
+              "uniforms": {
+                "audio_gain": 2.8,
+                "band_contrast": 1.4,
+                "bg_level": 0.18,
+                "brightness": 1.1,
+                "ribbon_count": 6,
+                "ribbon_width": 0.055,
+                "spin_speed": 0.24
+              }
+            }
+          }
+        }
+      },
+      "selection_weight": 1.5,
+      "tier": "marquee"
+    },
+    "ENTROPY_COLLAPSE": {
+      "audio_safety": {
+        "audio_gain_max": 1.6,
+        "audio_gain_min": 0.8
+      },
+      "behavior_flags": {
+        "buffered": true,
+        "has_color_controls": true,
+        "is_glitchy_if_pushed": false
+      },
+      "description": "Fragmenting core and shards with star field; great for heavier tech peaks.",
+      "display_name": "Entropy Collapse",
+      "genres": [
+        "tech trance"
+      ],
+      "notes": "Defaults based on Subharmonic Core in Vol 11.",
+      "presets": {
+        "default": {
+          "sections": {
+            "breakdown": {
+              "uniforms": {
+                "audio_gain": 0.85,
+                "collapse_bias": 0.45,
+                "core_color": [
+                  0.3,
+                  0.6,
+                  1.0
+                ],
+                "ray_layers": 5.7,
+                "shard_color": [
+                  0.75,
+                  0.9,
+                  1.0
+                ],
+                "shard_sharpness": 17.5,
+                "star_density": 0.9,
+                "swirl_amount": 1.0
+              }
+            },
+            "build": {
+              "uniforms": {
+                "audio_gain": 1.3,
+                "collapse_bias": 0.58,
+                "core_color": [
+                  0.5,
+                  0.7,
+                  1.0
+                ],
+                "ray_layers": 6.5,
+                "shard_color": [
+                  0.95,
+                  0.99,
+                  1.0
+                ],
+                "shard_sharpness": 19.0,
+                "star_density": 1.25,
+                "swirl_amount": 1.4
+              }
+            },
+            "drop": {
+              "uniforms": {
+                "audio_gain": 1.6,
+                "collapse_bias": 0.65,
+                "core_color": [
+                  0.65,
+                  0.72,
+                  1.0
+                ],
+                "ray_layers": 7.0,
+                "shard_color": [
+                  1.0,
+                  0.95,
+                  0.9
+                ],
+                "shard_sharpness": 19.8,
+                "star_density": 1.45,
+                "swirl_amount": 1.7
+              }
+            },
+            "groove": {
+              "uniforms": {
+                "audio_gain": 1.2,
+                "collapse_bias": 0.55,
+                "core_color": [
+                  0.45,
+                  0.7,
+                  1.0
+                ],
+                "ray_layers": 6.3,
+                "shard_color": [
+                  0.95,
+                  1.0,
+                  1.0
+                ],
+                "shard_sharpness": 18.8,
+                "star_density": 1.2,
+                "swirl_amount": 1.3
+              }
+            },
+            "intro": {
+              "uniforms": {
+                "audio_gain": 1.0,
+                "collapse_bias": 0.5,
+                "core_color": [
+                  0.35,
+                  0.65,
+                  1.0
+                ],
+                "ray_layers": 6.0,
+                "shard_color": [
+                  0.9,
+                  0.98,
+                  1.0
+                ],
+                "shard_sharpness": 18.0,
+                "star_density": 1.0,
+                "swirl_amount": 1.1
+              }
+            },
+            "outro": {
+              "uniforms": {
+                "audio_gain": 1.05,
+                "collapse_bias": 0.52,
+                "core_color": [
+                  0.4,
+                  0.65,
+                  1.0
+                ],
+                "ray_layers": 6.1,
+                "shard_color": [
+                  0.85,
+                  0.95,
+                  1.0
+                ],
+                "shard_sharpness": 18.2,
+                "star_density": 1.05,
+                "swirl_amount": 1.2
+              }
+            }
+          }
+        }
+      },
+      "selection_weight": 1.3,
+      "tier": "marquee"
+    },
+    "GRAVITON_FLUX": {
+      "audio_safety": {
+        "audio_gain_max": 1.6,
+        "audio_gain_min": 1.0
+      },
+      "behavior_flags": {
+        "buffered": true,
+        "has_color_controls": true,
+        "is_glitchy_if_pushed": false
+      },
+      "description": "Bands and caustics bending under gravity-like shear.",
+      "display_name": "Graviton Flux",
+      "genres": [
+        "tech trance"
+      ],
+      "notes": "Defaults based on Chrome Horizon in Vol 11.",
+      "presets": {
+        "default": {
+          "sections": {
+            "breakdown": {
+              "uniforms": {
+                "audio_gain": 1.0,
+                "band_color": [
+                  0.89,
+                  0.98,
+                  1.0
+                ],
+                "band_sharp": 21.5,
+                "caustic_color": [
+                  0.35,
+                  0.69,
+                  1.0
+                ],
+                "caustic_mix": 0.76,
+                "shear_amt": 0.5
+              }
+            },
+            "build": {
+              "uniforms": {
+                "audio_gain": 1.35,
+                "band_color": [
+                  0.94,
+                  0.98,
+                  1.0
+                ],
+                "band_sharp": 26.0,
+                "caustic_color": [
+                  0.35,
+                  0.78,
+                  1.0
+                ],
+                "caustic_mix": 0.86,
+                "shear_amt": 0.56
+              }
+            },
+            "drop": {
+              "uniforms": {
+                "audio_gain": 1.55,
+                "band_color": [
+                  0.96,
+                  0.98,
+                  1.0
+                ],
+                "band_sharp": 28.0,
+                "caustic_color": [
+                  0.35,
+                  0.82,
+                  1.0
+                ],
+                "caustic_mix": 0.9,
+                "shear_amt": 0.58
+              }
+            },
+            "groove": {
+              "uniforms": {
+                "audio_gain": 1.2,
+                "band_color": [
+                  0.92,
+                  0.98,
+                  1.0
+                ],
+                "band_sharp": 24.0,
+                "caustic_color": [
+                  0.35,
+                  0.74,
+                  1.0
+                ],
+                "caustic_mix": 0.82,
+                "shear_amt": 0.55
+              }
+            },
+            "intro": {
+              "uniforms": {
+                "audio_gain": 1.0,
+                "band_color": [
+                  0.9,
+                  0.98,
+                  1.0
+                ],
+                "band_sharp": 22.0,
+                "caustic_color": [
+                  0.35,
+                  0.7,
+                  1.0
+                ],
+                "caustic_mix": 0.78,
+                "shear_amt": 0.52
+              }
+            },
+            "outro": {
+              "uniforms": {
+                "audio_gain": 1.2,
+                "band_color": [
+                  0.9,
+                  0.98,
+                  1.0
+                ],
+                "band_sharp": 23.5,
+                "caustic_color": [
+                  0.35,
+                  0.74,
+                  1.0
+                ],
+                "caustic_mix": 0.8,
+                "shear_amt": 0.52
+              }
+            }
+          }
+        }
+      },
+      "selection_weight": 1.0,
+      "tier": "solid"
+    },
+    "JULIA_GRID": {
+      "audio_safety": {
+        "audio_gain_max": 0.5,
+        "audio_gain_min": 0.25
+      },
+      "behavior_flags": {
+        "buffered": true,
+        "has_color_controls": false,
+        "is_glitchy_if_pushed": true
+      },
+      "description": "Audio-reactive fractal grid; sharp and hypnotic when driven moderately.",
+      "display_name": "Julia Grid",
+      "genres": [
+        "tech trance"
+      ],
+      "notes": "Defaults based on Spectral Pressure in Vol 11. Keep audio_gain below ~0.5 in features-driven mode.",
+      "presets": {
+        "default": {
+          "sections": {
+            "breakdown": {
+              "uniforms": {
+                "audio_gain": 0.26,
+                "fibonacci_index": 5,
+                "julia_iterations": 60,
+                "motion_blur": 0.192,
+                "time_speed": 1.2
+              }
+            },
+            "build": {
+              "uniforms": {
+                "audio_gain": 0.43,
+                "fibonacci_index": 5,
+                "julia_iterations": 70,
+                "motion_blur": 0.131,
+                "time_speed": 1.62
+              }
+            },
+            "drop": {
+              "uniforms": {
+                "audio_gain": 0.47,
+                "fibonacci_index": 5,
+                "julia_iterations": 72,
+                "motion_blur": 0.12,
+                "time_speed": 1.7
+              }
+            },
+            "groove": {
+              "uniforms": {
+                "audio_gain": 0.34,
+                "fibonacci_index": 5,
+                "julia_iterations": 66,
+                "motion_blur": 0.158,
+                "time_speed": 1.44
+              }
+            },
+            "intro": {
+              "uniforms": {
+                "audio_gain": 0.37,
+                "fibonacci_index": 5,
+                "julia_iterations": 67,
+                "motion_blur": 0.149,
+                "time_speed": 1.5
+              }
+            },
+            "outro": {
+              "uniforms": {
+                "audio_gain": 0.31,
+                "fibonacci_index": 5,
+                "julia_iterations": 64,
+                "motion_blur": 0.17,
+                "time_speed": 1.35
+              }
+            }
+          }
+        }
+      },
+      "selection_weight": 1.0,
+      "tier": "solid"
+    },
+    "LISSAJOUS_GLOVES": {
+      "audio_safety": {
+        "audio_gain_max": 1.3,
+        "audio_gain_min": 0.7
+      },
+      "behavior_flags": {
+        "buffered": true,
+        "has_color_controls": true,
+        "is_glitchy_if_pushed": false
+      },
+      "description": "Fast, vector-like trails reminiscent of light show gloves; strong tech-trance identity.",
+      "display_name": "Lissajous Gloves",
+      "genres": [
+        "tech trance"
+      ],
+      "notes": "Used on Torque Vector in Vol 11; color and swirl tuned for legibility.",
+      "presets": {
+        "default": {
+          "sections": {
+            "breakdown": {
+              "uniforms": {
+                "audio_gain": 0.75,
+                "col_a": [
+                  0.55,
+                  0.8,
+                  0.95
+                ],
+                "col_b": [
+                  0.35,
+                  0.55,
+                  0.9
+                ],
+                "swirl": 0.22,
+                "trail_count": 3.0,
+                "trail_softness": 0.03
+              }
+            },
+            "build": {
+              "uniforms": {
+                "audio_gain": 1.1,
+                "col_a": [
+                  0.8,
+                  0.9,
+                  1.0
+                ],
+                "col_b": [
+                  0.6,
+                  0.75,
+                  1.0
+                ],
+                "swirl": 0.34,
+                "trail_count": 4.0,
+                "trail_softness": 0.022
+              }
+            },
+            "drop": {
+              "uniforms": {
+                "audio_gain": 1.25,
+                "col_a": [
+                  1.0,
+                  0.7,
+                  0.9
+                ],
+                "col_b": [
+                  1.0,
+                  0.8,
+                  0.5
+                ],
+                "swirl": 0.38,
+                "trail_count": 5.0,
+                "trail_softness": 0.02
+              }
+            },
+            "groove": {
+              "uniforms": {
+                "audio_gain": 1.05,
+                "col_a": [
+                  0.7,
+                  0.95,
+                  1.0
+                ],
+                "col_b": [
+                  0.5,
+                  0.7,
+                  1.0
+                ],
+                "swirl": 0.3,
+                "trail_count": 3.5,
+                "trail_softness": 0.024
+              }
+            },
+            "intro": {
+              "uniforms": {
+                "audio_gain": 0.85,
+                "col_a": [
+                  0.6,
+                  0.9,
+                  1.0
+                ],
+                "col_b": [
+                  0.4,
+                  0.6,
+                  1.0
+                ],
+                "swirl": 0.24,
+                "trail_count": 3.0,
+                "trail_softness": 0.028
+              }
+            },
+            "outro": {
+              "uniforms": {
+                "audio_gain": 0.95,
+                "col_a": [
+                  0.7,
+                  0.9,
+                  1.0
+                ],
+                "col_b": [
+                  0.5,
+                  0.7,
+                  1.0
+                ],
+                "swirl": 0.26,
+                "trail_count": 3.5,
+                "trail_softness": 0.026
+              }
+            }
+          }
+        }
+      },
+      "selection_weight": 1.4,
+      "tier": "marquee"
+    },
+    "SHADER_TOBER": {
+      "audio_safety": {
+        "audio_gain_max": 1.8,
+        "audio_gain_min": 1.4
+      },
+      "behavior_flags": {
+        "buffered": true,
+        "has_color_controls": false,
+        "is_glitchy_if_pushed": true
+      },
+      "description": "Complex audio-reactive field; can be busy but good for certain peaks.",
+      "display_name": "Shader Tober",
+      "genres": [
+        "tech trance"
+      ],
+      "notes": "Defaults based on Echo Chamber in Vol 11. Keep audio_gain in a tight window.",
+      "presets": {
+        "default": {
+          "sections": {
+            "breakdown": {
+              "uniforms": {
+                "ITER": 62,
+                "audio_gain": 1.6,
+                "bass_max": 0.74,
+                "spec_row": 0.48
+              }
+            },
+            "build": {
+              "uniforms": {
+                "ITER": 66,
+                "audio_gain": 1.7,
+                "bass_max": 0.76,
+                "spec_row": 0.5
+              }
+            },
+            "drop": {
+              "uniforms": {
+                "ITER": 70,
+                "audio_gain": 1.8,
+                "bass_max": 0.78,
+                "spec_row": 0.52
+              }
+            },
+            "groove": {
+              "uniforms": {
+                "ITER": 60,
+                "audio_gain": 1.5,
+                "bass_max": 0.72,
+                "spec_row": 0.47
+              }
+            },
+            "intro": {
+              "uniforms": {
+                "ITER": 56,
+                "audio_gain": 1.4,
+                "bass_max": 0.7,
+                "spec_row": 0.45
+              }
+            },
+            "outro": {
+              "uniforms": {
+                "ITER": 56,
+                "audio_gain": 1.45,
+                "bass_max": 0.7,
+                "spec_row": 0.45
+              }
+            }
+          }
+        }
+      },
+      "selection_weight": 0.8,
+      "tier": "utility"
+    },
+    "SMITH_CELLS": {
+      "audio_safety": {
+        "audio_dot_brightness_max": 60.0,
+        "audio_dot_brightness_min": 40.0,
+        "audio_dot_size_max": 6.0,
+        "audio_dot_size_min": 4.0
+      },
+      "behavior_flags": {
+        "buffered": true,
+        "has_color_controls": false,
+        "is_glitchy_if_pushed": false
+      },
+      "description": "Grid of pulsing cells; reacts nicely to kick and synth stabs.",
+      "display_name": "Smith Cells",
+      "genres": [
+        "tech trance"
+      ],
+      "notes": "Defaults based on Phase Containment in Vol 11.",
+      "presets": {
+        "default": {
+          "sections": {
+            "breakdown": {
+              "uniforms": {
+                "audio_dot_brightness": 43.0,
+                "audio_dot_size": 4.3
+              }
+            },
+            "build": {
+              "uniforms": {
+                "audio_dot_brightness": 55.0,
+                "audio_dot_size": 5.4
+              }
+            },
+            "drop": {
+              "uniforms": {
+                "audio_dot_brightness": 60.0,
+                "audio_dot_size": 5.8
+              }
+            },
+            "groove": {
+              "uniforms": {
+                "audio_dot_brightness": 52.0,
+                "audio_dot_size": 5.3
+              }
+            },
+            "intro": {
+              "uniforms": {
+                "audio_dot_brightness": 50.0,
+                "audio_dot_size": 5.0
+              }
+            },
+            "outro": {
+              "uniforms": {
+                "audio_dot_brightness": 46.0,
+                "audio_dot_size": 4.7
+              }
+            }
+          }
+        }
+      },
+      "selection_weight": 1.0,
+      "tier": "solid"
+    },
+    "SONIC_FUSION": {
+      "audio_safety": {
+        "audio_gain_max": 1.5,
+        "audio_gain_min": 1.0
+      },
+      "behavior_flags": {
+        "buffered": true,
+        "has_color_controls": false,
+        "is_glitchy_if_pushed": false
+      },
+      "description": "Striped / banded visual responsive to spectrum; strong rhythmic feel.",
+      "display_name": "Sonic Fusion",
+      "genres": [
+        "tech trance"
+      ],
+      "notes": "Defaults based on Reactor Lines in Vol 11.",
+      "presets": {
+        "default": {
+          "sections": {
+            "breakdown": {
+              "uniforms": {
+                "audio_gain": 1.0,
+                "time_scale": 1.0
+              }
+            },
+            "build": {
+              "uniforms": {
+                "audio_gain": 1.35,
+                "time_scale": 1.15
+              }
+            },
+            "drop": {
+              "uniforms": {
+                "audio_gain": 1.45,
+                "time_scale": 1.2
+              }
+            },
+            "groove": {
+              "uniforms": {
+                "audio_gain": 1.25,
+                "time_scale": 1.1
+              }
+            },
+            "intro": {
+              "uniforms": {
+                "audio_gain": 1.0,
+                "time_scale": 0.98
+              }
+            },
+            "outro": {
+              "uniforms": {
+                "audio_gain": 1.0,
+                "time_scale": 1.0
+              }
+            }
+          }
+        }
+      },
+      "selection_weight": 1.0,
+      "tier": "solid"
+    },
+    "SPARKLE_AND_LINES": {
+      "audio_safety": {
+        "audio_gain_max": 6.5,
+        "audio_gain_min": 4.0
+      },
+      "behavior_flags": {
+        "buffered": true,
+        "has_color_controls": false,
+        "is_glitchy_if_pushed": false
+      },
+      "description": "Sparkling particles over rhythm lines; good mid-set energy shader.",
+      "display_name": "Sparkle and Lines",
+      "genres": [
+        "tech trance"
+      ],
+      "notes": "Used on Circuit Prayer in Vol 11.",
+      "presets": {
+        "default": {
+          "sections": {
+            "breakdown": {
+              "uniforms": {
+                "audio_gain": 4.3,
+                "overall_gain": 1.2,
+                "sparkle_gain": 1.2
+              }
+            },
+            "build": {
+              "uniforms": {
+                "audio_gain": 5.6,
+                "overall_gain": 1.55,
+                "sparkle_gain": 1.55
+              }
+            },
+            "drop": {
+              "uniforms": {
+                "audio_gain": 5.8,
+                "overall_gain": 1.6,
+                "sparkle_gain": 1.6
+              }
+            },
+            "groove": {
+              "uniforms": {
+                "audio_gain": 5.3,
+                "overall_gain": 1.5,
+                "sparkle_gain": 1.5
+              }
+            },
+            "intro": {
+              "uniforms": {
+                "audio_gain": 4.8,
+                "overall_gain": 1.28,
+                "sparkle_gain": 1.28
+              }
+            },
+            "outro": {
+              "uniforms": {
+                "audio_gain": 4.5,
+                "overall_gain": 1.25,
+                "sparkle_gain": 1.25
+              }
+            }
+          }
+        }
+      },
+      "selection_weight": 1.0,
+      "tier": "solid"
+    },
+    "SPIRAL_RIBBON_TUNNEL": {
+      "audio_safety": {
+        "audio_gain_max": 1.7,
+        "audio_gain_min": 1.0
+      },
+      "behavior_flags": {
+        "buffered": true,
+        "has_color_controls": false,
+        "is_glitchy_if_pushed": false
+      },
+      "description": "Spiral tunnel with banded motion, good for driving grooves and drops.",
+      "display_name": "Spiral Ribbon Tunnel",
+      "genres": [
+        "tech trance"
+      ],
+      "notes": "Used on Iron Residue in Vol 11. Limited levers but visually strong.",
+      "presets": {
+        "default": {
+          "sections": {
+            "breakdown": {
+              "uniforms": {
+                "audio_gain": 1.05,
+                "depth_scroll": 0.28,
+                "ribbon_density": 5.0,
+                "twist_base": 1.1
+              }
+            },
+            "build": {
+              "uniforms": {
+                "audio_gain": 1.55,
+                "depth_scroll": 0.52,
+                "ribbon_density": 6.5,
+                "twist_base": 1.7
+              }
+            },
+            "drop": {
+              "uniforms": {
+                "audio_gain": 1.7,
+                "depth_scroll": 0.56,
+                "ribbon_density": 7.0,
+                "twist_base": 1.85
+              }
+            },
+            "groove": {
+              "uniforms": {
+                "audio_gain": 1.45,
+                "depth_scroll": 0.48,
+                "ribbon_density": 6.0,
+                "twist_base": 1.55
+              }
+            },
+            "intro": {
+              "uniforms": {
+                "audio_gain": 1.2,
+                "depth_scroll": 0.32,
+                "ribbon_density": 4.5,
+                "twist_base": 1.2
+              }
+            },
+            "outro": {
+              "uniforms": {
+                "audio_gain": 1.35,
+                "depth_scroll": 0.44,
+                "ribbon_density": 5.8,
+                "twist_base": 1.45
+              }
+            }
+          }
+        }
+      },
+      "selection_weight": 1.1,
+      "tier": "solid"
+    },
+    "SPIRAL_RUNNER": {
+      "audio_safety": {
+        "audio_gain_max": 4.0,
+        "audio_gain_min": 2.5
+      },
+      "behavior_flags": {
+        "buffered": true,
+        "has_color_controls": false,
+        "is_glitchy_if_pushed": false
+      },
+      "description": "Radial spiral arms that thicken and brighten with energy.",
+      "display_name": "Spiral Runner",
+      "genres": [
+        "tech trance"
+      ],
+      "notes": "Defaults based on Neural Flux in Vol 11.",
+      "presets": {
+        "default": {
+          "sections": {
+            "breakdown": {
+              "uniforms": {
+                "arms": 5,
+                "audio_gain": 2.8,
+                "thickness": 0.036
+              }
+            },
+            "build": {
+              "uniforms": {
+                "arms": 6,
+                "audio_gain": 3.4,
+                "thickness": 0.05
+              }
+            },
+            "drop": {
+              "uniforms": {
+                "arms": 8,
+                "audio_gain": 3.9,
+                "thickness": 0.064
+              }
+            },
+            "groove": {
+              "uniforms": {
+                "arms": 5,
+                "audio_gain": 3.0,
+                "thickness": 0.04
+              }
+            },
+            "intro": {
+              "uniforms": {
+                "arms": 4,
+                "audio_gain": 2.6,
+                "thickness": 0.032
+              }
+            },
+            "outro": {
+              "uniforms": {
+                "arms": 5,
+                "audio_gain": 3.0,
+                "thickness": 0.046
+              }
+            }
+          }
+        }
+      },
+      "selection_weight": 1.0,
+      "tier": "solid"
+    },
+    "TRIPLE_WAVE_LINES": {
+      "audio_safety": {
+        "waveform_drive_max": 0.6,
+        "waveform_drive_min": 0.4
+      },
+      "behavior_flags": {
+        "buffered": true,
+        "has_color_controls": true,
+        "is_glitchy_if_pushed": false
+      },
+      "description": "Three stacked waveforms with controllable colors; excellent closing shader.",
+      "display_name": "Triple Wave Lines",
+      "genres": [
+        "tech trance"
+      ],
+      "notes": "Defaults based on Last Frequency in Vol 11.",
+      "presets": {
+        "default": {
+          "sections": {
+            "breakdown": {
+              "uniforms": {
+                "blur_audio_boost": 0.86,
+                "color_line_1": [
+                  0.92,
+                  0.18,
+                  0.26
+                ],
+                "color_line_2": [
+                  0.84,
+                  0.46,
+                  0.26
+                ],
+                "color_line_3": [
+                  0.3,
+                  0.24,
+                  0.9
+                ],
+                "line_thickness": 0.022,
+                "loud_brightness": 4.0,
+                "quiet_brightness": 0.32,
+                "waveform_drive": 0.42
+              }
+            },
+            "build": {
+              "uniforms": {
+                "blur_audio_boost": 0.94,
+                "color_line_1": [
+                  1.0,
+                  0.4,
+                  0.4
+                ],
+                "color_line_2": [
+                  1.0,
+                  0.6,
+                  0.4
+                ],
+                "color_line_3": [
+                  0.36,
+                  0.3,
+                  0.94
+                ],
+                "line_thickness": 0.027,
+                "loud_brightness": 4.2,
+                "quiet_brightness": 0.36,
+                "waveform_drive": 0.52
+              }
+            },
+            "drop": {
+              "uniforms": {
+                "blur_audio_boost": 0.98,
+                "color_line_1": [
+                  1.0,
+                  0.5,
+                  0.45
+                ],
+                "color_line_2": [
+                  1.0,
+                  0.7,
+                  0.45
+                ],
+                "color_line_3": [
+                  0.4,
+                  0.32,
+                  0.96
+                ],
+                "line_thickness": 0.03,
+                "loud_brightness": 4.25,
+                "quiet_brightness": 0.35,
+                "waveform_drive": 0.56
+              }
+            },
+            "groove": {
+              "uniforms": {
+                "blur_audio_boost": 0.88,
+                "color_line_1": [
+                  0.98,
+                  0.2,
+                  0.28
+                ],
+                "color_line_2": [
+                  0.88,
+                  0.5,
+                  0.3
+                ],
+                "color_line_3": [
+                  0.32,
+                  0.27,
+                  0.9
+                ],
+                "line_thickness": 0.022,
+                "loud_brightness": 4.05,
+                "quiet_brightness": 0.34,
+                "waveform_drive": 0.45
+              }
+            },
+            "intro": {
+              "uniforms": {
+                "blur_audio_boost": 0.85,
+                "color_line_1": [
+                  0.95,
+                  0.15,
+                  0.25
+                ],
+                "color_line_2": [
+                  0.85,
+                  0.45,
+                  0.25
+                ],
+                "color_line_3": [
+                  0.3,
+                  0.25,
+                  0.9
+                ],
+                "line_thickness": 0.02,
+                "loud_brightness": 4.0,
+                "quiet_brightness": 0.33,
+                "waveform_drive": 0.4
+              }
+            },
+            "outro": {
+              "uniforms": {
+                "blur_audio_boost": 0.86,
+                "color_line_1": [
+                  0.92,
+                  0.18,
+                  0.26
+                ],
+                "color_line_2": [
+                  0.84,
+                  0.46,
+                  0.26
+                ],
+                "color_line_3": [
+                  0.3,
+                  0.24,
+                  0.9
+                ],
+                "line_thickness": 0.022,
+                "loud_brightness": 4.0,
+                "quiet_brightness": 0.32,
+                "waveform_drive": 0.42
+              }
+            }
+          }
+        }
+      },
+      "selection_weight": 1.4,
+      "tier": "marquee"
+    },
+    "hexagone": {
+      "audio_safety": {
+        "audio_drive_max": 0.03,
+        "audio_drive_min": 0.0
+      },
+      "behavior_flags": {
+        "buffered": true,
+        "has_color_controls": true,
+        "is_glitchy_if_pushed": true
+      },
+      "description": "Audio-reactive hex lattice; can look amazing but very sensitive to drive.",
+      "display_name": "Hexagone",
+      "genres": [
+        "tech trance"
+      ],
+      "notes": "Defaults based on Grain Density in Vol 11. audio_drive must stay ~0.02\u20130.03.",
+      "presets": {
+        "default": {
+          "sections": {
+            "breakdown": {
+              "uniforms": {
+                "audio_drive": 0.026,
+                "base_spin": 0.38,
+                "bass_to_speed": 0.16,
+                "brightness": 1.52,
+                "speed": 0.21,
+                "treble_to_hue": 0.68
+              }
+            },
+            "build": {
+              "uniforms": {
+                "audio_drive": 0.028,
+                "base_spin": 0.4,
+                "bass_to_speed": 0.17,
+                "brightness": 1.55,
+                "speed": 0.22,
+                "treble_to_hue": 0.7
+              }
+            },
+            "drop": {
+              "uniforms": {
+                "audio_drive": 0.03,
+                "base_spin": 0.48,
+                "bass_to_speed": 0.2,
+                "brightness": 1.65,
+                "speed": 0.26,
+                "treble_to_hue": 0.75
+              }
+            },
+            "groove": {
+              "uniforms": {
+                "audio_drive": 0.026,
+                "base_spin": 0.36,
+                "bass_to_speed": 0.16,
+                "brightness": 1.5,
+                "speed": 0.2,
+                "treble_to_hue": 0.68
+              }
+            },
+            "intro": {
+              "uniforms": {
+                "audio_drive": 0.024,
+                "base_spin": 0.32,
+                "bass_to_speed": 0.15,
+                "brightness": 1.45,
+                "speed": 0.18,
+                "treble_to_hue": 0.65,
+                "use_audio": true
+              }
+            },
+            "outro": {
+              "uniforms": {
+                "audio_drive": 0.022,
+                "base_spin": 0.32,
+                "bass_to_speed": 0.15,
+                "brightness": 1.45,
+                "speed": 0.18,
+                "treble_to_hue": 0.65
+              }
+            }
+          }
+        }
+      },
+      "selection_weight": 0.7,
+      "tier": "utility"
+    },
+    "echo_orbit": {
+      "audio_safety": {
+        "audio_gain_min": 1.75,
+        "audio_gain_max": 5.25
+      },
+      "behavior_flags": {
+        "buffered": true,
+        "has_color_controls": true,
+        "is_glitchy_if_pushed": false
+      },
+      "description": "",
+      "display_name": "echo_orbit",
+      "genres": [
+        "progressive trance"
+      ],
+      "notes": "",
+      "presets": {
+        "default": {
+          "sections": {
+            "intro": {
+              "uniforms": {
+                "buffer_a_size": [
+                  1920.0,
+                  1080.0
+                ],
+                "audio_gamma": 2.2,
+                "audio_gain": 2.4499999999999997,
+                "audio_floor": 0.02,
+                "beam_count": 7.0,
+                "beam_speed": 0.7,
+                "ring_freq": 1.75,
+                "ring_sharpness": 1.0499999999999998,
+                "feedback_mix": 0.88,
+                "noise_amount": 0.027999999999999997
+              }
+            },
+            "groove": {
+              "uniforms": {
+                "buffer_a_size": [
+                  1920.0,
+                  1080.0
+                ],
+                "audio_gamma": 2.2,
+                "audio_gain": 3.5,
+                "audio_floor": 0.02,
+                "beam_count": 10.0,
+                "beam_speed": 1.0,
+                "ring_freq": 2.5,
+                "ring_sharpness": 1.5,
+                "feedback_mix": 0.92,
+                "noise_amount": 0.04
+              }
+            },
+            "breakdown": {
+              "uniforms": {
+                "buffer_a_size": [
+                  1920.0,
+                  1080.0
+                ],
+                "audio_gamma": 2.2,
+                "audio_gain": 1.75,
+                "audio_floor": 0.02,
+                "beam_count": 5.0,
+                "beam_speed": 0.5,
+                "ring_freq": 1.25,
+                "ring_sharpness": 0.75,
+                "feedback_mix": 0.94,
+                "noise_amount": 0.02
+              }
+            },
+            "build": {
+              "uniforms": {
+                "buffer_a_size": [
+                  1920.0,
+                  1080.0
+                ],
+                "audio_gamma": 2.2,
+                "audio_gain": 4.55,
+                "audio_floor": 0.02,
+                "beam_count": 13.0,
+                "beam_speed": 1.3,
+                "ring_freq": 3.25,
+                "ring_sharpness": 1.9500000000000002,
+                "feedback_mix": 0.91,
+                "noise_amount": 0.052000000000000005
+              }
+            },
+            "drop": {
+              "uniforms": {
+                "buffer_a_size": [
+                  1920.0,
+                  1080.0
+                ],
+                "audio_gamma": 2.2,
+                "audio_gain": 5.6000000000000005,
+                "audio_floor": 0.02,
+                "beam_count": 16.0,
+                "beam_speed": 1.6,
+                "ring_freq": 4.0,
+                "ring_sharpness": 2.4000000000000004,
+                "feedback_mix": 0.93,
+                "noise_amount": 0.064
+              }
+            },
+            "outro": {
+              "uniforms": {
+                "buffer_a_size": [
+                  1920.0,
+                  1080.0
+                ],
+                "audio_gamma": 2.2,
+                "audio_gain": 2.8000000000000003,
+                "audio_floor": 0.02,
+                "beam_count": 8.0,
+                "beam_speed": 0.8,
+                "ring_freq": 2.0,
+                "ring_sharpness": 1.2000000000000002,
+                "feedback_mix": 0.9,
+                "noise_amount": 0.032
+              }
+            }
+          }
+        }
+      },
+      "selection_weight": 1.0,
+      "tier": "b"
+    },
+    "latent_morph": {
+      "audio_safety": {
+        "audio_gain_min": 2.0,
+        "audio_gain_max": 6.0
+      },
+      "behavior_flags": {
+        "buffered": true,
+        "has_color_controls": true,
+        "is_glitchy_if_pushed": false
+      },
+      "description": "",
+      "display_name": "latent_morph",
+      "genres": [
+        "progressive trance"
+      ],
+      "notes": "",
+      "presets": {
+        "default": {
+          "sections": {
+            "intro": {
+              "uniforms": {
+                "buffer_a_size": [
+                  1920.0,
+                  1080.0
+                ],
+                "audio_gamma": 2.0,
+                "audio_gain": 3.4,
+                "audio_floor": 0.02,
+                "latent_scale": 16.0,
+                "warp_amplitude": 0.153,
+                "detail_mix": 0.6,
+                "brightness": 0.85,
+                "contrast": 1.1
+              }
+            },
+            "groove": {
+              "uniforms": {
+                "buffer_a_size": [
+                  1920.0,
+                  1080.0
+                ],
+                "audio_gamma": 2.0,
+                "audio_gain": 4.0,
+                "audio_floor": 0.02,
+                "latent_scale": 16.0,
+                "warp_amplitude": 0.18,
+                "detail_mix": 0.6,
+                "brightness": 1.0,
+                "contrast": 1.1
+              }
+            },
+            "breakdown": {
+              "uniforms": {
+                "buffer_a_size": [
+                  1920.0,
+                  1080.0
+                ],
+                "audio_gamma": 2.0,
+                "audio_gain": 2.8,
+                "audio_floor": 0.02,
+                "latent_scale": 16.0,
+                "warp_amplitude": 0.126,
+                "detail_mix": 0.6,
+                "brightness": 0.7,
+                "contrast": 1.1
+              }
+            },
+            "build": {
+              "uniforms": {
+                "buffer_a_size": [
+                  1920.0,
+                  1080.0
+                ],
+                "audio_gamma": 2.0,
+                "audio_gain": 4.4,
+                "audio_floor": 0.02,
+                "latent_scale": 16.0,
+                "warp_amplitude": 0.198,
+                "detail_mix": 0.6,
+                "brightness": 1.1,
+                "contrast": 1.1
+              }
+            },
+            "drop": {
+              "uniforms": {
+                "buffer_a_size": [
+                  1920.0,
+                  1080.0
+                ],
+                "audio_gamma": 2.0,
+                "audio_gain": 4.8,
+                "audio_floor": 0.02,
+                "latent_scale": 16.0,
+                "warp_amplitude": 0.216,
+                "detail_mix": 0.6,
+                "brightness": 1.2,
+                "contrast": 1.1
+              }
+            },
+            "outro": {
+              "uniforms": {
+                "buffer_a_size": [
+                  1920.0,
+                  1080.0
+                ],
+                "audio_gamma": 2.0,
+                "audio_gain": 3.6,
+                "audio_floor": 0.02,
+                "latent_scale": 16.0,
+                "warp_amplitude": 0.162,
+                "detail_mix": 0.6,
+                "brightness": 0.9,
+                "contrast": 1.1
+              }
+            }
+          }
+        }
+      },
+      "selection_weight": 1.0,
+      "tier": "b"
+    },
+    "RIBBON_ORBITALS": {
+      "audio_safety": {
+        "audio_gain_min": 0.5,
+        "audio_gain_max": 1.5
+      },
+      "behavior_flags": {
+        "buffered": false,
+        "has_color_controls": true,
+        "is_glitchy_if_pushed": false
+      },
+      "description": "",
+      "display_name": "RIBBON_ORBITALS",
+      "genres": [
+        "progressive trance"
+      ],
+      "notes": "",
+      "presets": {
+        "default": {
+          "sections": {
+            "intro": {
+              "uniforms": {
+                "audio_enabled": true,
+                "bar_count": 64,
+                "audio_gain": 0.85,
+                "aspect": 1.7778,
+                "ribbon_count": 3,
+                "ribbon_width": 0.0272,
+                "ribbon_scale": 1.0625,
+                "orbit_speed": 0.153,
+                "trail_steps": 20,
+                "trail_time": 0.595,
+                "trail_decay": 0.425,
+                "core_gain": 1.02,
+                "halo_gain": 0.3825,
+                "bg_lift": 0.017,
+                "exposure": 1.12,
+                "color_a": [
+                  0.35,
+                  0.08,
+                  0.55
+                ],
+                "color_b": [
+                  0.95,
+                  0.35,
+                  0.7
+                ],
+                "color_c": [
+                  0.7,
+                  0.95,
+                  1.1
+                ]
+              }
+            },
+            "groove": {
+              "uniforms": {
+                "audio_enabled": true,
+                "bar_count": 64,
+                "audio_gain": 1.0,
+                "aspect": 1.7778,
+                "ribbon_count": 3,
+                "ribbon_width": 0.032,
+                "ribbon_scale": 1.25,
+                "orbit_speed": 0.18,
+                "trail_steps": 24,
+                "trail_time": 0.7,
+                "trail_decay": 0.5,
+                "core_gain": 1.2,
+                "halo_gain": 0.45,
+                "bg_lift": 0.02,
+                "exposure": 1.12,
+                "color_a": [
+                  0.35,
+                  0.08,
+                  0.55
+                ],
+                "color_b": [
+                  0.95,
+                  0.35,
+                  0.7
+                ],
+                "color_c": [
+                  0.7,
+                  0.95,
+                  1.1
+                ]
+              }
+            },
+            "breakdown": {
+              "uniforms": {
+                "audio_enabled": true,
+                "bar_count": 64,
+                "audio_gain": 0.7,
+                "aspect": 1.7778,
+                "ribbon_count": 3,
+                "ribbon_width": 0.0224,
+                "ribbon_scale": 0.875,
+                "orbit_speed": 0.126,
+                "trail_steps": 17,
+                "trail_time": 0.48999999999999994,
+                "trail_decay": 0.35,
+                "core_gain": 0.84,
+                "halo_gain": 0.315,
+                "bg_lift": 0.013999999999999999,
+                "exposure": 1.12,
+                "color_a": [
+                  0.35,
+                  0.08,
+                  0.55
+                ],
+                "color_b": [
+                  0.95,
+                  0.35,
+                  0.7
+                ],
+                "color_c": [
+                  0.7,
+                  0.95,
+                  1.1
+                ]
+              }
+            },
+            "build": {
+              "uniforms": {
+                "audio_enabled": true,
+                "bar_count": 64,
+                "audio_gain": 1.1,
+                "aspect": 1.7778,
+                "ribbon_count": 3,
+                "ribbon_width": 0.0352,
+                "ribbon_scale": 1.375,
+                "orbit_speed": 0.198,
+                "trail_steps": 26,
+                "trail_time": 0.77,
+                "trail_decay": 0.55,
+                "core_gain": 1.32,
+                "halo_gain": 0.49500000000000005,
+                "bg_lift": 0.022000000000000002,
+                "exposure": 1.12,
+                "color_a": [
+                  0.35,
+                  0.08,
+                  0.55
+                ],
+                "color_b": [
+                  0.95,
+                  0.35,
+                  0.7
+                ],
+                "color_c": [
+                  0.7,
+                  0.95,
+                  1.1
+                ]
+              }
+            },
+            "drop": {
+              "uniforms": {
+                "audio_enabled": true,
+                "bar_count": 64,
+                "audio_gain": 1.2,
+                "aspect": 1.7778,
+                "ribbon_count": 3,
+                "ribbon_width": 0.0384,
+                "ribbon_scale": 1.5,
+                "orbit_speed": 0.216,
+                "trail_steps": 29,
+                "trail_time": 0.84,
+                "trail_decay": 0.6,
+                "core_gain": 1.44,
+                "halo_gain": 0.54,
+                "bg_lift": 0.024,
+                "exposure": 1.12,
+                "color_a": [
+                  0.35,
+                  0.08,
+                  0.55
+                ],
+                "color_b": [
+                  0.95,
+                  0.35,
+                  0.7
+                ],
+                "color_c": [
+                  0.7,
+                  0.95,
+                  1.1
+                ]
+              }
+            },
+            "outro": {
+              "uniforms": {
+                "audio_enabled": true,
+                "bar_count": 64,
+                "audio_gain": 0.9,
+                "aspect": 1.7778,
+                "ribbon_count": 3,
+                "ribbon_width": 0.028800000000000003,
+                "ribbon_scale": 1.125,
+                "orbit_speed": 0.162,
+                "trail_steps": 22,
+                "trail_time": 0.63,
+                "trail_decay": 0.45,
+                "core_gain": 1.08,
+                "halo_gain": 0.405,
+                "bg_lift": 0.018000000000000002,
+                "exposure": 1.12,
+                "color_a": [
+                  0.35,
+                  0.08,
+                  0.55
+                ],
+                "color_b": [
+                  0.95,
+                  0.35,
+                  0.7
+                ],
+                "color_c": [
+                  0.7,
+                  0.95,
+                  1.1
+                ]
+              }
+            }
+          }
+        }
+      },
+      "selection_weight": 1.0,
+      "tier": "b"
+    },
+    "QUANTUM_BLOOM": {
+      "audio_safety": {
+        "audio_gain_min": 0.5,
+        "audio_gain_max": 1.5
+      },
+      "behavior_flags": {
+        "buffered": false,
+        "has_color_controls": true,
+        "is_glitchy_if_pushed": false
+      },
+      "description": "",
+      "display_name": "QUANTUM_BLOOM",
+      "genres": [
+        "progressive trance"
+      ],
+      "notes": "",
+      "presets": {
+        "default": {
+          "sections": {
+            "intro": {
+              "uniforms": {
+                "enable_audio": true,
+                "aspect": 1.7778,
+                "level": 0.0,
+                "kick": 0.0,
+                "audio_gain": 0.7,
+                "cell_color": [
+                  0.86,
+                  0.98,
+                  1.0
+                ],
+                "vein_color": [
+                  0.35,
+                  0.7,
+                  1.0
+                ],
+                "bg_dim": 0.027999999999999997,
+                "colony_size": 0.75,
+                "cell_count": 5.0,
+                "ring_sharp": 22.0
+              }
+            },
+            "groove": {
+              "uniforms": {
+                "enable_audio": true,
+                "aspect": 1.7778,
+                "level": 0.0,
+                "kick": 0.0,
+                "audio_gain": 1.0,
+                "cell_color": [
+                  0.86,
+                  0.98,
+                  1.0
+                ],
+                "vein_color": [
+                  0.35,
+                  0.7,
+                  1.0
+                ],
+                "bg_dim": 0.04,
+                "colony_size": 0.75,
+                "cell_count": 5.0,
+                "ring_sharp": 22.0
+              }
+            },
+            "breakdown": {
+              "uniforms": {
+                "enable_audio": true,
+                "aspect": 1.7778,
+                "level": 0.0,
+                "kick": 0.0,
+                "audio_gain": 0.5,
+                "cell_color": [
+                  0.86,
+                  0.98,
+                  1.0
+                ],
+                "vein_color": [
+                  0.35,
+                  0.7,
+                  1.0
+                ],
+                "bg_dim": 0.02,
+                "colony_size": 0.75,
+                "cell_count": 5.0,
+                "ring_sharp": 22.0
+              }
+            },
+            "build": {
+              "uniforms": {
+                "enable_audio": true,
+                "aspect": 1.7778,
+                "level": 0.0,
+                "kick": 0.0,
+                "audio_gain": 1.3,
+                "cell_color": [
+                  0.86,
+                  0.98,
+                  1.0
+                ],
+                "vein_color": [
+                  0.35,
+                  0.7,
+                  1.0
+                ],
+                "bg_dim": 0.052000000000000005,
+                "colony_size": 0.75,
+                "cell_count": 5.0,
+                "ring_sharp": 22.0
+              }
+            },
+            "drop": {
+              "uniforms": {
+                "enable_audio": true,
+                "aspect": 1.7778,
+                "level": 0.0,
+                "kick": 0.0,
+                "audio_gain": 1.6,
+                "cell_color": [
+                  0.86,
+                  0.98,
+                  1.0
+                ],
+                "vein_color": [
+                  0.35,
+                  0.7,
+                  1.0
+                ],
+                "bg_dim": 0.064,
+                "colony_size": 0.75,
+                "cell_count": 5.0,
+                "ring_sharp": 22.0
+              }
+            },
+            "outro": {
+              "uniforms": {
+                "enable_audio": true,
+                "aspect": 1.7778,
+                "level": 0.0,
+                "kick": 0.0,
+                "audio_gain": 0.8,
+                "cell_color": [
+                  0.86,
+                  0.98,
+                  1.0
+                ],
+                "vein_color": [
+                  0.35,
+                  0.7,
+                  1.0
+                ],
+                "bg_dim": 0.032,
+                "colony_size": 0.75,
+                "cell_count": 5.0,
+                "ring_sharp": 22.0
+              }
+            }
+          }
+        }
+      },
+      "selection_weight": 1.0,
+      "tier": "b"
+    },
+    "SOFT_RIPPLES": {
+      "audio_safety": {
+        "audio_gain_min": 0.5,
+        "audio_gain_max": 1.5
+      },
+      "behavior_flags": {
+        "buffered": false,
+        "has_color_controls": true,
+        "is_glitchy_if_pushed": false
+      },
+      "description": "",
+      "display_name": "SOFT_RIPPLES",
+      "genres": [
+        "progressive trance"
+      ],
+      "notes": "",
+      "presets": {
+        "default": {
+          "sections": {
+            "intro": {
+              "uniforms": {
+                "aspect": 0.0,
+                "audio_enabled": false,
+                "bar_count": 64,
+                "audio_gain": 0.85,
+                "base_amp": 0.2975,
+                "freq": 8.0,
+                "drift": 0.12
+              }
+            },
+            "groove": {
+              "uniforms": {
+                "aspect": 0.0,
+                "audio_enabled": false,
+                "bar_count": 64,
+                "audio_gain": 1.0,
+                "base_amp": 0.35,
+                "freq": 8.0,
+                "drift": 0.12
+              }
+            },
+            "breakdown": {
+              "uniforms": {
+                "aspect": 0.0,
+                "audio_enabled": false,
+                "bar_count": 64,
+                "audio_gain": 0.7,
+                "base_amp": 0.24499999999999997,
+                "freq": 8.0,
+                "drift": 0.12
+              }
+            },
+            "build": {
+              "uniforms": {
+                "aspect": 0.0,
+                "audio_enabled": false,
+                "bar_count": 64,
+                "audio_gain": 1.1,
+                "base_amp": 0.385,
+                "freq": 8.0,
+                "drift": 0.12
+              }
+            },
+            "drop": {
+              "uniforms": {
+                "aspect": 0.0,
+                "audio_enabled": false,
+                "bar_count": 64,
+                "audio_gain": 1.2,
+                "base_amp": 0.42,
+                "freq": 8.0,
+                "drift": 0.12
+              }
+            },
+            "outro": {
+              "uniforms": {
+                "aspect": 0.0,
+                "audio_enabled": false,
+                "bar_count": 64,
+                "audio_gain": 0.9,
+                "base_amp": 0.315,
+                "freq": 8.0,
+                "drift": 0.12
+              }
+            }
+          }
+        }
+      },
+      "selection_weight": 1.0,
+      "tier": "b"
+    },
+    "FUZZY_BRAIN": {
+      "audio_safety": {
+        "audio_gain_min": 0.0,
+        "audio_gain_max": 2.0
+      },
+      "behavior_flags": {
+        "buffered": false,
+        "has_color_controls": true,
+        "is_glitchy_if_pushed": false
+      },
+      "description": "",
+      "display_name": "FUZZY_BRAIN",
+      "genres": [
+        "progressive trance"
+      ],
+      "notes": "",
+      "presets": {
+        "default": {
+          "sections": {
+            "intro": {
+              "uniforms": {
+                "enable_audio": true,
+                "volume_env": -1.0,
+                "bar_count": 0,
+                "flow_speed": 0.37,
+                "flow_min": 0.495,
+                "flow_max": 1.62,
+                "flow_curve": 12.0,
+                "scale": 1.9,
+                "gamma_correction": 1.4
+              }
+            },
+            "groove": {
+              "uniforms": {
+                "enable_audio": true,
+                "volume_env": -1.0,
+                "bar_count": 0,
+                "flow_speed": 0.53,
+                "flow_min": 0.54,
+                "flow_max": 1.8,
+                "flow_curve": 12.0,
+                "scale": 2.1,
+                "gamma_correction": 1.5
+              }
+            },
+            "breakdown": {
+              "uniforms": {
+                "enable_audio": true,
+                "volume_env": -1.0,
+                "bar_count": 0,
+                "flow_speed": 0.27,
+                "flow_min": 0.42,
+                "flow_max": 1.25,
+                "flow_curve": 12.0,
+                "scale": 2.3,
+                "gamma_correction": 1.5
+              }
+            },
+            "build": {
+              "uniforms": {
+                "enable_audio": true,
+                "volume_env": -1.0,
+                "bar_count": 0,
+                "flow_speed": 0.66,
+                "flow_min": 0.594,
+                "flow_max": 1.98,
+                "flow_curve": 12.0,
+                "scale": 2.25,
+                "gamma_correction": 1.5
+              }
+            },
+            "drop": {
+              "uniforms": {
+                "enable_audio": true,
+                "volume_env": -1.0,
+                "bar_count": 0,
+                "flow_speed": 0.77,
+                "flow_min": 0.63,
+                "flow_max": 2.16,
+                "flow_curve": 12.0,
+                "scale": 2.4,
+                "gamma_correction": 1.6
+              }
+            },
+            "outro": {
+              "uniforms": {
+                "enable_audio": true,
+                "volume_env": -1.0,
+                "bar_count": 0,
+                "flow_speed": 0.33,
+                "flow_min": 0.486,
+                "flow_max": 1.62,
+                "flow_curve": 12.0,
+                "scale": 2.0,
+                "gamma_correction": 1.4
+              }
+            }
+          }
+        }
+      },
+      "selection_weight": 1.0,
+      "tier": "b"
+    },
+    "PARALLAX_GALAXY": {
+      "audio_safety": {
+        "audio_gain_min": 0.5,
+        "audio_gain_max": 1.5
+      },
+      "behavior_flags": {
+        "buffered": false,
+        "has_color_controls": true,
+        "is_glitchy_if_pushed": false
+      },
+      "description": "",
+      "display_name": "PARALLAX_GALAXY",
+      "genres": [
+        "progressive trance"
+      ],
+      "notes": "",
+      "presets": {
+        "default": {
+          "sections": {
+            "intro": {
+              "uniforms": {
+                "use_audio": false,
+                "audio_bins": [
+                  0.01,
+                  0.07,
+                  0.15,
+                  0.3
+                ],
+                "audio_row": 0.25,
+                "audio_gain": 0.85,
+                "star_mix": 0.85,
+                "layer_offset": 0.0,
+                "exposure": 1.0
+              }
+            },
+            "groove": {
+              "uniforms": {
+                "use_audio": false,
+                "audio_bins": [
+                  0.01,
+                  0.07,
+                  0.15,
+                  0.3
+                ],
+                "audio_row": 0.25,
+                "audio_gain": 1.0,
+                "star_mix": 1.0,
+                "layer_offset": 0.0,
+                "exposure": 1.0
+              }
+            },
+            "breakdown": {
+              "uniforms": {
+                "use_audio": false,
+                "audio_bins": [
+                  0.01,
+                  0.07,
+                  0.15,
+                  0.3
+                ],
+                "audio_row": 0.25,
+                "audio_gain": 0.7,
+                "star_mix": 0.7,
+                "layer_offset": 0.0,
+                "exposure": 1.0
+              }
+            },
+            "build": {
+              "uniforms": {
+                "use_audio": false,
+                "audio_bins": [
+                  0.01,
+                  0.07,
+                  0.15,
+                  0.3
+                ],
+                "audio_row": 0.25,
+                "audio_gain": 1.1,
+                "star_mix": 1.1,
+                "layer_offset": 0.0,
+                "exposure": 1.0
+              }
+            },
+            "drop": {
+              "uniforms": {
+                "use_audio": false,
+                "audio_bins": [
+                  0.01,
+                  0.07,
+                  0.15,
+                  0.3
+                ],
+                "audio_row": 0.25,
+                "audio_gain": 1.2,
+                "star_mix": 1.2,
+                "layer_offset": 0.0,
+                "exposure": 1.0
+              }
+            },
+            "outro": {
+              "uniforms": {
+                "use_audio": false,
+                "audio_bins": [
+                  0.01,
+                  0.07,
+                  0.15,
+                  0.3
+                ],
+                "audio_row": 0.25,
+                "audio_gain": 0.9,
+                "star_mix": 0.9,
+                "layer_offset": 0.0,
+                "exposure": 1.0
+              }
+            }
+          }
+        }
+      },
+      "selection_weight": 1.0,
+      "tier": "b"
+    },
+    "KALEIDOSCOPE_BLOOM": {
+      "audio_safety": {
+        "audio_gain_min": 0.0,
+        "audio_gain_max": 2.0
+      },
+      "behavior_flags": {
+        "buffered": false,
+        "has_color_controls": true,
+        "is_glitchy_if_pushed": false
+      },
+      "description": "",
+      "display_name": "KALEIDOSCOPE_BLOOM",
+      "genres": [
+        "progressive trance"
+      ],
+      "notes": "",
+      "presets": {
+        "default": {
+          "sections": {
+            "intro": {
+              "uniforms": {
+                "use_audio": true,
+                "u_bass": 0.18,
+                "u_mid": 0.45,
+                "u_high": 0.78,
+                "aspect": 1.7777,
+                "segs": 8,
+                "warp": 0.51,
+                "glow": 0.85
+              }
+            },
+            "groove": {
+              "uniforms": {
+                "use_audio": true,
+                "u_bass": 0.18,
+                "u_mid": 0.45,
+                "u_high": 0.78,
+                "aspect": 1.7777,
+                "segs": 8,
+                "warp": 0.6,
+                "glow": 1.0
+              }
+            },
+            "breakdown": {
+              "uniforms": {
+                "use_audio": true,
+                "u_bass": 0.18,
+                "u_mid": 0.45,
+                "u_high": 0.78,
+                "aspect": 1.7777,
+                "segs": 8,
+                "warp": 0.42,
+                "glow": 0.7
+              }
+            },
+            "build": {
+              "uniforms": {
+                "use_audio": true,
+                "u_bass": 0.18,
+                "u_mid": 0.45,
+                "u_high": 0.78,
+                "aspect": 1.7777,
+                "segs": 8,
+                "warp": 0.66,
+                "glow": 1.1
+              }
+            },
+            "drop": {
+              "uniforms": {
+                "use_audio": true,
+                "u_bass": 0.18,
+                "u_mid": 0.45,
+                "u_high": 0.78,
+                "aspect": 1.7777,
+                "segs": 8,
+                "warp": 0.72,
+                "glow": 1.2
+              }
+            },
+            "outro": {
+              "uniforms": {
+                "use_audio": true,
+                "u_bass": 0.18,
+                "u_mid": 0.45,
+                "u_high": 0.78,
+                "aspect": 1.7777,
+                "segs": 8,
+                "warp": 0.54,
+                "glow": 0.9
+              }
+            }
+          }
+        }
+      },
+      "selection_weight": 1.0,
+      "tier": "b"
+    },
+    "power_particle": {
+      "audio_safety": {
+        "audio_gain_min": 0.0,
+        "audio_gain_max": 2.0
+      },
+      "behavior_flags": {
+        "buffered": false,
+        "has_color_controls": true,
+        "is_glitchy_if_pushed": false
+      },
+      "description": "",
+      "display_name": "power_particle",
+      "genres": [
+        "progressive trance"
+      ],
+      "notes": "Rebuilt presets from shader defaults, low audio drive, capped level_drive <= 0.075.",
+      "presets": {
+        "default": {
+          "sections": {
+            "intro": {
+              "uniforms": {
+                "size": 0.544726,
+                "lineSize": 0.174972,
+                "blur": 0.227794,
+                "grid": 4.3651814,
+                "grid2": 4.1270218,
+                "morph": 2.30923,
+                "delayAmount": 0.025,
+                "speed": 0.22,
+                "stretch_x": 1.7777778,
+                "x_offset": 0.35,
+                "center": [
+                  0.5,
+                  0.5
+                ],
+                "scale": 1.0,
+                "rotate": 0.0,
+                "audio_level": 0.035,
+                "bass": 0.015,
+                "treble": 0.035,
+                "tone": 0.5,
+                "bpm": 128.0,
+                "bpm_drive": 0.5,
+                "level_drive": 0.013,
+                "morph_drive": 0.03,
+                "hue_audio": 0.18,
+                "sat_audio": 0.3,
+                "hue_period_s": 10.0,
+                "min_speed": 0.03,
+                "max_speed": 1.2
+              }
+            },
+            "groove": {
+              "uniforms": {
+                "size": 0.544726,
+                "lineSize": 0.174972,
+                "blur": 0.227794,
+                "grid": 4.3651814,
+                "grid2": 4.1270218,
+                "morph": 2.30923,
+                "delayAmount": 0.03,
+                "speed": 0.35,
+                "stretch_x": 1.7777778,
+                "x_offset": 0.35,
+                "center": [
+                  0.5,
+                  0.5
+                ],
+                "scale": 1.0,
+                "rotate": 0.0,
+                "audio_level": 0.045,
+                "bass": 0.02,
+                "treble": 0.045,
+                "tone": 0.5,
+                "bpm": 128.0,
+                "bpm_drive": 0.5,
+                "level_drive": 0.014,
+                "morph_drive": 0.04,
+                "hue_audio": 0.18,
+                "sat_audio": 0.3,
+                "hue_period_s": 10.0,
+                "min_speed": 0.04,
+                "max_speed": 2.0
+              }
+            },
+            "breakdown": {
+              "uniforms": {
+                "size": 0.544726,
+                "lineSize": 0.174972,
+                "blur": 0.227794,
+                "grid": 4.3651814,
+                "grid2": 4.1270218,
+                "morph": 2.30923,
+                "delayAmount": 0.02,
+                "speed": 0.18,
+                "stretch_x": 1.7777778,
+                "x_offset": 0.35,
+                "center": [
+                  0.5,
+                  0.5
+                ],
+                "scale": 1.0,
+                "rotate": 0.0,
+                "audio_level": 0.03,
+                "bass": 0.015,
+                "treble": 0.03,
+                "tone": 0.5,
+                "bpm": 128.0,
+                "bpm_drive": 0.5,
+                "level_drive": 0.0125,
+                "morph_drive": 0.03,
+                "hue_audio": 0.18,
+                "sat_audio": 0.3,
+                "hue_period_s": 10.0,
+                "min_speed": 0.02,
+                "max_speed": 1.0
+              }
+            },
+            "build": {
+              "uniforms": {
+                "size": 0.544726,
+                "lineSize": 0.174972,
+                "blur": 0.227794,
+                "grid": 4.3651814,
+                "grid2": 4.1270218,
+                "morph": 2.30923,
+                "delayAmount": 0.035,
+                "speed": 0.42,
+                "stretch_x": 1.7777778,
+                "x_offset": 0.35,
+                "center": [
+                  0.5,
+                  0.5
+                ],
+                "scale": 1.0,
+                "rotate": 0.0,
+                "audio_level": 0.06,
+                "bass": 0.02,
+                "treble": 0.055,
+                "tone": 0.5,
+                "bpm": 128.0,
+                "bpm_drive": 0.5,
+                "level_drive": 0.015,
+                "morph_drive": 0.055,
+                "hue_audio": 0.18,
+                "sat_audio": 0.3,
+                "hue_period_s": 10.0,
+                "min_speed": 0.045,
+                "max_speed": 2.4
+              }
+            },
+            "drop": {
+              "uniforms": {
+                "size": 0.544726,
+                "lineSize": 0.174972,
+                "blur": 0.227794,
+                "grid": 4.3651814,
+                "grid2": 4.1270218,
+                "morph": 2.30923,
+                "delayAmount": 0.04,
+                "speed": 0.5,
+                "stretch_x": 1.7777778,
+                "x_offset": 0.35,
+                "center": [
+                  0.5,
+                  0.5
+                ],
+                "scale": 1.0,
+                "rotate": 0.0,
+                "audio_level": 0.075,
+                "bass": 0.025,
+                "treble": 0.065,
+                "tone": 0.5,
+                "bpm": 128.0,
+                "bpm_drive": 0.5,
+                "level_drive": 0.016,
+                "morph_drive": 0.06,
+                "hue_audio": 0.18,
+                "sat_audio": 0.3,
+                "hue_period_s": 10.0,
+                "min_speed": 0.05,
+                "max_speed": 3.0
+              }
+            },
+            "outro": {
+              "uniforms": {
+                "size": 0.544726,
+                "lineSize": 0.174972,
+                "blur": 0.227794,
+                "grid": 4.3651814,
+                "grid2": 4.1270218,
+                "morph": 2.30923,
+                "delayAmount": 0.025,
+                "speed": 0.26,
+                "stretch_x": 1.7777778,
+                "x_offset": 0.35,
+                "center": [
+                  0.5,
+                  0.5
+                ],
+                "scale": 1.0,
+                "rotate": 0.0,
+                "audio_level": 0.04,
+                "bass": 0.018,
+                "treble": 0.04,
+                "tone": 0.5,
+                "bpm": 128.0,
+                "bpm_drive": 0.5,
+                "level_drive": 0.0135,
+                "morph_drive": 0.035,
+                "hue_audio": 0.18,
+                "sat_audio": 0.3,
+                "hue_period_s": 10.0,
+                "min_speed": 0.03,
+                "max_speed": 1.6
+              }
+            }
+          }
+        }
+      },
+      "selection_weight": 1.0,
+      "tier": "b"
+    },
+"bubbles": {
+  "audio_safety": {
+    "audio_gain_min": 0.0,
+    "audio_gain_max": 2.0
+  },
+  "behavior_flags": {
+    "buffered": false,
+    "has_color_controls": true,
+    "is_glitchy_if_pushed": false
+  },
+  "description": "",
+  "display_name": "bubbles",
+  "genres": ["progressive trance"],
+  "notes": "",
+  "presets": {
+    "default": {
+      "sections": {
+        "intro": {
+          "uniforms": {
+            "use_audio": true,
+            "band_count": 12,
+            "pulse_gain": 0.28,
+            "pulse_bias": 0.055,
+            "audio_hue_gain": 0.42,
+            "aspect": 1.7777,
+            "max_iter": 12,
+            "bg_sat": 0.85,
+            "seam_kill": 1.0,
+            "tile_y_scale": 1.8,
+            "radius_margin_px": 2.0
+          }
+        },
+        "groove": {
+          "uniforms": {
+            "use_audio": true,
+            "band_count": 12,
+            "pulse_gain": 0.35,
+            "pulse_bias": 0.065,
+            "audio_hue_gain": 0.50,
+            "aspect": 1.7777,
+            "max_iter": 12,
+            "bg_sat": 0.85,
+            "seam_kill": 1.0,
+            "tile_y_scale": 1.8,
+            "radius_margin_px": 2.0
+          }
+        },
+        "breakdown": {
+          "uniforms": {
+            "use_audio": true,
+            "band_count": 12,
+            "pulse_gain": 0.22,
+            "pulse_bias": 0.045,
+            "audio_hue_gain": 0.35,
+            "aspect": 1.7777,
+            "max_iter": 12,
+            "bg_sat": 0.85,
+            "seam_kill": 1.0,
+            "tile_y_scale": 1.8,
+            "radius_margin_px": 2.0
+          }
+        },
+        "build": {
+          "uniforms": {
+            "use_audio": true,
+            "band_count": 12,
+            "pulse_gain": 0.40,
+            "pulse_bias": 0.070,
+            "audio_hue_gain": 0.55,
+            "aspect": 1.7777,
+            "max_iter": 12,
+            "bg_sat": 0.85,
+            "seam_kill": 1.0,
+            "tile_y_scale": 1.8,
+            "radius_margin_px": 2.0
+          }
+        },
+        "drop": {
+          "uniforms": {
+            "use_audio": true,
+            "band_count": 12,
+            "pulse_gain": 0.45,
+            "pulse_bias": 0.075,
+            "audio_hue_gain": 0.60,
+            "aspect": 1.7777,
+            "max_iter": 12,
+            "bg_sat": 0.85,
+            "seam_kill": 1.0,
+            "tile_y_scale": 1.8,
+            "radius_margin_px": 2.0
+          }
+        },
+        "outro": {
+          "uniforms": {
+            "use_audio": true,
+            "band_count": 12,
+            "pulse_gain": 0.30,
+            "pulse_bias": 0.055,
+            "audio_hue_gain": 0.45,
+            "aspect": 1.7777,
+            "max_iter": 12,
+            "bg_sat": 0.85,
+            "seam_kill": 1.0,
+            "tile_y_scale": 1.8,
+            "radius_margin_px": 2.0
+          }
+        }
+      }
+    }
+  },
+  "selection_weight": 1.0,
+  "tier": "b"
+}
+,
+    "ECHOFORM_FADE": {
+      "audio_safety": {
+        "audio_gain_min": 0.5,
+        "audio_gain_max": 1.5
+      },
+      "behavior_flags": {
+        "buffered": false,
+        "has_color_controls": true,
+        "is_glitchy_if_pushed": false
+      },
+      "description": "",
+      "display_name": "ECHOFORM_FADE",
+      "genres": [
+        "progressive trance"
+      ],
+      "notes": "",
+      "presets": {
+        "default": {
+          "sections": {
+            "intro": {
+              "uniforms": {
+                "bg_color": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  1.0
+                ],
+                "line_color_a": [
+                  0.75,
+                  0.9,
+                  1.0,
+                  1.0
+                ],
+                "line_color_b": [
+                  0.5,
+                  0.2,
+                  0.9,
+                  1.0
+                ],
+                "audio_reactivity": 0.9,
+                "amp_reactivity": 0.8,
+                "thickness_reactivity": 0.7,
+                "brightness_reactivity": 0.9,
+                "color_shift_reactivity": 0.5,
+                "base_amplitude": 0.16,
+                "base_line_width": 0.01275,
+                "reactive_line_width": 0.028,
+                "max_extra_brightness": 0.45,
+                "glow_strength": 0.34,
+                "glow_width_mult": 2.125,
+                "gradient_scale": 1.275,
+                "gradient_scroll_speed": 0.0255,
+                "audio_enabled": true,
+                "bar_count": 64,
+                "audio_gain": 0.9,
+                "aspect": 1.0,
+                "decay": 0.85
+              }
+            },
+            "groove": {
+              "uniforms": {
+                "bg_color": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  1.0
+                ],
+                "line_color_a": [
+                  0.75,
+                  0.9,
+                  1.0,
+                  1.0
+                ],
+                "line_color_b": [
+                  0.5,
+                  0.2,
+                  0.9,
+                  1.0
+                ],
+                "audio_reactivity": 1.0,
+                "amp_reactivity": 1.0,
+                "thickness_reactivity": 1.0,
+                "brightness_reactivity": 1.0,
+                "color_shift_reactivity": 0.5,
+                "base_amplitude": 0.18,
+                "base_line_width": 0.015,
+                "reactive_line_width": 0.032,
+                "max_extra_brightness": 0.5,
+                "glow_strength": 0.4,
+                "glow_width_mult": 2.5,
+                "gradient_scale": 1.5,
+                "gradient_scroll_speed": 0.03,
+                "audio_enabled": true,
+                "bar_count": 64,
+                "audio_gain": 1.0,
+                "aspect": 1.0,
+                "decay": 0.85
+              }
+            },
+            "breakdown": {
+              "uniforms": {
+                "bg_color": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  1.0
+                ],
+                "line_color_a": [
+                  0.75,
+                  0.9,
+                  1.0,
+                  1.0
+                ],
+                "line_color_b": [
+                  0.5,
+                  0.2,
+                  0.9,
+                  1.0
+                ],
+                "audio_reactivity": 0.8,
+                "amp_reactivity": 0.6,
+                "thickness_reactivity": 0.6,
+                "brightness_reactivity": 0.8,
+                "color_shift_reactivity": 0.5,
+                "base_amplitude": 0.13,
+                "base_line_width": 0.011,
+                "reactive_line_width": 0.022,
+                "max_extra_brightness": 0.35,
+                "glow_strength": 0.28,
+                "glow_width_mult": 1.75,
+                "gradient_scale": 1.05,
+                "gradient_scroll_speed": 0.021,
+                "audio_enabled": true,
+                "bar_count": 64,
+                "audio_gain": 0.75,
+                "aspect": 1.0,
+                "decay": 0.85
+              }
+            },
+            "build": {
+              "uniforms": {
+                "bg_color": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  1.0
+                ],
+                "line_color_a": [
+                  0.75,
+                  0.9,
+                  1.0,
+                  1.0
+                ],
+                "line_color_b": [
+                  0.5,
+                  0.2,
+                  0.9,
+                  1.0
+                ],
+                "audio_reactivity": 1.1,
+                "amp_reactivity": 1.1,
+                "thickness_reactivity": 1.1,
+                "brightness_reactivity": 1.1,
+                "color_shift_reactivity": 0.5,
+                "base_amplitude": 0.2,
+                "base_line_width": 0.0165,
+                "reactive_line_width": 0.035,
+                "max_extra_brightness": 0.55,
+                "glow_strength": 0.44,
+                "glow_width_mult": 2.75,
+                "gradient_scale": 1.65,
+                "gradient_scroll_speed": 0.033,
+                "audio_enabled": true,
+                "bar_count": 64,
+                "audio_gain": 1.1,
+                "aspect": 1.0,
+                "decay": 0.85
+              }
+            },
+            "drop": {
+              "uniforms": {
+                "bg_color": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  1.0
+                ],
+                "line_color_a": [
+                  0.75,
+                  0.9,
+                  1.0,
+                  1.0
+                ],
+                "line_color_b": [
+                  0.5,
+                  0.2,
+                  0.9,
+                  1.0
+                ],
+                "audio_reactivity": 1.2,
+                "amp_reactivity": 1.35,
+                "thickness_reactivity": 1.2,
+                "brightness_reactivity": 1.2,
+                "color_shift_reactivity": 0.5,
+                "base_amplitude": 0.22,
+                "base_line_width": 0.018,
+                "reactive_line_width": 0.038,
+                "max_extra_brightness": 0.6,
+                "glow_strength": 0.48,
+                "glow_width_mult": 3.0,
+                "gradient_scale": 1.8,
+                "gradient_scroll_speed": 0.036,
+                "audio_enabled": true,
+                "bar_count": 64,
+                "audio_gain": 1.2,
+                "aspect": 1.0,
+                "decay": 0.85
+              }
+            },
+            "outro": {
+              "uniforms": {
+                "bg_color": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  1.0
+                ],
+                "line_color_a": [
+                  0.75,
+                  0.9,
+                  1.0,
+                  1.0
+                ],
+                "line_color_b": [
+                  0.5,
+                  0.2,
+                  0.9,
+                  1.0
+                ],
+                "audio_reactivity": 0.95,
+                "amp_reactivity": 0.9,
+                "thickness_reactivity": 0.8,
+                "brightness_reactivity": 0.9,
+                "color_shift_reactivity": 0.5,
+                "base_amplitude": 0.15,
+                "base_line_width": 0.0135,
+                "reactive_line_width": 0.029,
+                "max_extra_brightness": 0.45,
+                "glow_strength": 0.36,
+                "glow_width_mult": 2.25,
+                "gradient_scale": 1.35,
+                "gradient_scroll_speed": 0.027,
+                "audio_enabled": true,
+                "bar_count": 64,
+                "audio_gain": 0.9,
+                "aspect": 1.0,
+                "decay": 0.85
+              }
+            }
+          }
+        }
+      },
+      "selection_weight": 1.0,
+      "tier": "b"
+    },
+    "line": {
+      "audio_safety": {
+        "audio_gain_min": 0.6,
+        "audio_gain_max": 1.4
+      },
+      "behavior_flags": {
+        "buffered": false,
+        "has_color_controls": true,
+        "is_glitchy_if_pushed": false
+      },
+      "description": "Pastel spectrum+waveform lines; gentle deep progressive visual.",
+      "display_name": "line",
+      "genres": [
+        "progressive trance"
+      ],
+      "notes": "",
+      "presets": {
+        "default": {
+          "sections": {
+            "intro": {
+              "uniforms": {
+                "enable_audio": true,
+                "bar_count": 64,
+                "aspect": 1.7778,
+                "audio_gain": 0.8,
+                "spectrum_color": [
+                  0.78,
+                  0.88,
+                  1.0
+                ],
+                "waveform_color": [
+                  0.65,
+                  0.78,
+                  1.0
+                ]
+              }
+            },
+            "groove": {
+              "uniforms": {
+                "enable_audio": true,
+                "bar_count": 64,
+                "aspect": 1.7778,
+                "audio_gain": 1.0,
+                "spectrum_color": [
+                  0.82,
+                  0.9,
+                  1.0
+                ],
+                "waveform_color": [
+                  0.7,
+                  0.8,
+                  1.0
+                ]
+              }
+            },
+            "breakdown": {
+              "uniforms": {
+                "enable_audio": true,
+                "bar_count": 64,
+                "aspect": 1.7778,
+                "audio_gain": 0.7,
+                "spectrum_color": [
+                  0.76,
+                  0.86,
+                  0.98
+                ],
+                "waveform_color": [
+                  0.62,
+                  0.76,
+                  0.96
+                ]
+              }
+            },
+            "build": {
+              "uniforms": {
+                "enable_audio": true,
+                "bar_count": 64,
+                "aspect": 1.7778,
+                "audio_gain": 1.15,
+                "spectrum_color": [
+                  0.86,
+                  0.94,
+                  1.0
+                ],
+                "waveform_color": [
+                  0.74,
+                  0.84,
+                  1.0
+                ]
+              }
+            },
+            "drop": {
+              "uniforms": {
+                "enable_audio": true,
+                "bar_count": 64,
+                "aspect": 1.7778,
+                "audio_gain": 1.25,
+                "spectrum_color": [
+                  0.9,
+                  0.96,
+                  1.0
+                ],
+                "waveform_color": [
+                  0.78,
+                  0.86,
+                  1.0
+                ]
+              }
+            },
+            "outro": {
+              "uniforms": {
+                "enable_audio": true,
+                "bar_count": 64,
+                "aspect": 1.7778,
+                "audio_gain": 0.9,
+                "spectrum_color": [
+                  0.8,
+                  0.9,
+                  1.0
+                ],
+                "waveform_color": [
+                  0.68,
+                  0.8,
+                  1.0
+                ]
+              }
+            }
+          }
+        }
+      },
+      "selection_weight": 1.0,
+      "tier": "b"
+    }
+  },
+  "version": 1
+}

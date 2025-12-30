@@ -11,6 +11,12 @@ extends Node2D
 ## - SONIC_FUSION (torus/lightning shader)
 ##
 
+const OFFLINE_BANDS := 64
+const OFFLINE_LOW_HZ := 60.0      # match your features.csv generator
+const OFFLINE_HIGH_HZ := 9300.0   # match your features.csv generator
+var _offline_band_freqs: PackedFloat32Array = []
+var _offline_bins_initialized := false
+
 # ---------- Dynamic shader registry ----------
 @export var extra_shader_names: PackedStringArray = [
 	"HEXAGONE",
@@ -50,7 +56,7 @@ extends Node2D
 	"PULSE_MATRIX",  #ai
 	"ACID_BLOOM",  #ai
 	"FRACTAL_DRIVE",  #ai
-	"CIRCUT_PULSE",  #ai
+	"CIRCUIT_PULSE",  #ai
 	"SPECTRAL_BURST",  #ai
 	"VOLTAGE_SURGE",  #ai
 	"METALSTORM",  #ai
@@ -94,7 +100,12 @@ extends Node2D
 	"SPECTRAL_DISK",
 	"RAYMARCH_DROP",
 	"JULIA_GRID",
-
+	"ECHO_ORBIT",
+	"LATENT_BLOOM",
+	"KALEIDO_CIRCUIT",
+	"LATENT_MORPH",
+	"ECHOES_IN_MOTION",
+	"ENERGY_LATTICE",
 ]      # e.g. ["ARCS", "STARFIELD"]
 @export var extra_shader_materials: Array[ShaderMaterial] = []  # same length as names
 
@@ -103,7 +114,13 @@ extends Node2D
 	"BUFFER_TILE_WARP",
 	"FFT",
 	"BUFFERED_ESPIAL",
-	"JULIES_DUNES"
+	"JULIES_DUNES",
+	"ECHO_ORBIT",
+	"LATENT_BLOOM",
+	"KALEIDO_CIRCUIT",
+	"LATENT_MORPH",
+	"ECHOES_IN_MOTION",
+	"ENERGY_LATTICE",
 ]
 @export var buffer_override_materials: Array[ShaderMaterial] = []
 
@@ -353,7 +370,39 @@ func _ready() -> void:
 	if debug_log_audio_uniforms:
 		_print_audio_debug_hint()
 
+func _init_offline_band_freqs() -> void:
+	if _offline_bins_initialized:
+		return
 
+	_offline_band_freqs.resize(OFFLINE_BANDS)
+	var low := OFFLINE_LOW_HZ
+	var high := OFFLINE_HIGH_HZ
+	var span := high / low
+
+	for i in OFFLINE_BANDS:
+		var t := float(i) / float(OFFLINE_BANDS - 1)
+		# log-spaced center frequency
+		_offline_band_freqs[i] = low * pow(span, t)
+
+	_offline_bins_initialized = true
+
+func _offline_range_avg(bands: PackedFloat32Array, f_low: float, f_high: float) -> float:
+	_init_offline_band_freqs()
+
+	var sum := 0.0
+	var count := 0
+
+	var n = min(bands.size(), _offline_band_freqs.size())
+	for i in n:
+		var f := _offline_band_freqs[i]
+		if f >= f_low and f <= f_high:
+			sum += max(bands[i], 0.0)
+			count += 1
+
+	if count == 0:
+		return 0.0
+
+	return sum / float(count)
 
 func _register_shader(name: String, mat: ShaderMaterial, mode_opt = null) -> void:
 	if name == "" or mat == null:
@@ -580,6 +629,94 @@ func set_shader_by_name(name: String) -> bool:
 func _apply_shader_params(params: Dictionary) -> void:
 	if params.is_empty():
 		return
+
+	var reserved := {
+		"features": true,
+		"features_path": true,
+		"waveform": true,
+		"waveform_base": true,
+		"offline": true,
+		"offline_mode": true,
+		"events": true,
+	}
+
+	# --- Special keys (housekeeping) ---
+
+	if params.has("features") or params.has("features_path"):
+		var features_val := String(params.get("features", params.get("features_path", "")))
+		var resolved_features := _normalize_resource_path(features_val)
+		if resolved_features != "":
+			offline_features_path = resolved_features
+			load_features_csv(resolved_features)
+
+	if params.has("waveform") or params.has("waveform_base"):
+		var waveform_val := String(params.get("waveform", params.get("waveform_base", "")))
+		var resolved_waveform := _normalize_waveform_base(waveform_val)
+		if resolved_waveform != "":
+			offline_waveform_base = resolved_waveform
+			load_waveform_binary(resolved_waveform)
+
+	if params.has("offline") or params.has("offline_mode"):
+		var offline_flag = params.get("offline_mode", params.get("offline", false))
+		set_offline_mode(bool(offline_flag))
+
+	# --- Collect all target materials (main + buffers + extras) ---
+
+	var mats: Array[ShaderMaterial] = []
+
+	# 1. main visible
+	if color_rect != null:
+		var base_mat := color_rect.material as ShaderMaterial
+		if base_mat != null:
+			mats.append(base_mat)
+
+	# 2. default / primary buffer
+	if buffer_a_material != null and !mats.has(buffer_a_material):
+		mats.append(buffer_a_material)
+
+	# 3. active buffer (from override logic)
+	if _active_buffer_material != null and !mats.has(_active_buffer_material):
+		mats.append(_active_buffer_material)
+
+	# 4. named buffer overrides (includes buffered_espial_a if wired)
+	for override_mat in _buffer_override_lookup.values():
+		var sm := override_mat as ShaderMaterial
+		if sm != null and !mats.has(sm):
+			mats.append(sm)
+
+	# 5. extra custom shaders
+	for extra_mat in extra_shader_materials:
+		var sm2 := extra_mat as ShaderMaterial
+		if sm2 != null and !mats.has(sm2):
+			mats.append(sm2)
+
+	# 6. custom active
+	if _custom_active_material != null and !mats.has(_custom_active_material):
+		mats.append(_custom_active_material)
+
+	if mats.is_empty():
+		return
+
+	# --- Apply non-reserved params to all targets that declare the uniform ---
+
+	for k in params.keys():
+		if reserved.has(k):
+			continue
+
+		var v = _coerce_param_value(params[k])
+		if typeof(v) == TYPE_OBJECT and v == _unsupported_param_marker:
+			continue
+
+		for m in mats:
+			if m == null:
+				continue
+			_set_uniform_if_present(m, k, v)
+
+
+func _apply_shader_params_original(params: Dictionary) -> void:
+	print(params)
+	if params.is_empty():
+		return
 	var reserved := {
 		"features": true,
 		"features_path": true,
@@ -610,43 +747,35 @@ func _apply_shader_params(params: Dictionary) -> void:
 	for k in params.keys():
 		if reserved.has(k):
 			continue
-		if k == "shader":
-			var shader_name = params[k]
-			if typeof(shader_name) == TYPE_STRING:
-				if set_shader_by_name(String(shader_name)):
-					mat = color_rect.material as ShaderMaterial
-					if mat == null:
-						return
-			else:
-				push_warning("Shader override must be a string: %s" % [str(shader_name)])
-			continue
-		if !_shader_has_uniform(mat, k):
-			var shader_label := ""
-			if _material_to_name.has(mat):
-				shader_label = String(_material_to_name[mat])
-			elif mat.shader != null:
-				shader_label = String(mat.shader.resource_path)
-			if shader_label == "":
-				shader_label = str(mat)
-			push_warning("Shader '%s' has no uniform named '%s'" % [shader_label, k])
-			continue
-		var v = _coerce_param_value(params[k])
-		if typeof(v) == TYPE_OBJECT and v == _unsupported_param_marker:
-			push_warning("Unsupported shader param '%s' of type %s" % [k, typeof(params[k])])
-			continue
+		var v = params[k]
+		if v is Array:
+			var a := v as Array
+			if a.size() == 2:
+				v = Vector2(a[0], a[1])
+			elif a.size() == 3:
+				v = Color(a[0], a[1], a[2], 1.0) # works for vec3/color
+			elif a.size() == 4:
+				v = Color(a[0], a[1], a[2], a[3])
 		if typeof(v) == TYPE_STRING:
 			var s := String(v)
+
+			# allow "null" to clear a param
 			if s == "null":
 				mat.set_shader_parameter(k, null)
 				continue
+
+			# normalize and attempt to load textures/resources
 			var resolved := _normalize_resource_path(s)
 			if resolved.begins_with("res://") or resolved.begins_with("user://"):
 				var res := load(resolved)
+				print(res)
 				if res is Texture2D:
 					mat.set_shader_parameter(k, res)
 					continue
-		mat.set_shader_parameter(k, v)
+				# If it's not a texture, just fall through and set the raw string
 
+		mat.set_shader_parameter(k, v)
+	
 func _coerce_param_value(value):
 	var value_type := typeof(value)
 	if value_type == TYPE_NIL:
@@ -783,7 +912,8 @@ func set_aspect(aspect: float) -> void:
 
 func set_playhead(t: float) -> void:
 	_offline_playhead = max(t, 0.0)
-	_last_play_pos = _offline_time_offset + _offline_playhead
+	#_last_play_pos = _offline_time_offset + _offline_playhead
+	_last_play_pos = _get_overlay_time()
 	if _offline_features.size() > 0:
 				var idx_time := 0.0
 				if _offline_last_index >= 0 and _offline_last_index < _offline_features.size():
@@ -1269,21 +1399,46 @@ func _process(dt: float) -> void:
 
 	_update_track_overlay(overlay_time)
 
+func _get_overlay_time() -> float:
+	# In offline mode, detect the "single selected track" case:
+	# ExportRenderer builds a single inline track starting at 0:00,
+	# while features are windowed (t = 0..duration) and _offline_time_offset > 0.
+	if _offline_mode and _offline_time_offset > 0.0 and _cues.size() == 1:
+		var first_cue_t := float(_cues[0].get("t", 0.0))
+		# Heuristic: ExportRenderer’s inline single-track uses 0:00.
+		if abs(first_cue_t) <= 0.0005:
+			# Use local offline time so events like "t":"00:27"
+			# align with the rendered track, not the mix position.
+			return _offline_playhead
+
+	# Default: full-mix / normal behavior uses absolute time.
+	return _offline_time_offset + _offline_playhead
+
 func _process_offline() -> void:
-	var overlay_time := _offline_time_offset + _offline_playhead
+	#var overlay_time := _offline_time_offset + _offline_playhead
+	var overlay_time := _get_overlay_time()
 	_last_play_pos = overlay_time
+
+	var effective_dt := _offline_dt
+	if effective_dt <= 0.0:
+		effective_dt = 1.0 / max(1.0, _offline_fps)
+	if effective_dt <= 0.0:
+		effective_dt = 1.0 / 60.0
 
 	if color_rect == null:
 		_update_track_overlay(overlay_time)
+		_advance_offline_time(effective_dt)
 		return
 	if _offline_features.is_empty():
 		_debug_note_missing_offline_data()
 		_update_track_overlay(overlay_time)
+		_advance_offline_time(effective_dt)
 		return
 
 	var sample := _sample_offline_features(_offline_playhead)
 	if sample.is_empty():
 		_update_track_overlay(overlay_time)
+		_advance_offline_time(effective_dt)
 		return
 
 	level_sm = float(sample.get("level", 0.0))
@@ -1293,20 +1448,18 @@ func _process_offline() -> void:
 	if bands is PackedFloat32Array:
 		var arr := bands as PackedFloat32Array
 		if arr.size() > 0:
-			bass_sm = clamp(arr[0], 0.0, 1.0)
-			treb_sm = clamp(arr[arr.size() - 1], 0.0, 1.0)
+			# Match realtime-ish ranges.
+			# Realtime uses 50–140 Hz; with OFFLINE_LOW_HZ=60 we approximate as 60–140.
+			#bass_sm = clamp(arr[0], 0.0, 1.0)
+			bass_sm = _offline_range_avg(arr, 60.0, 140.0)
+			#treb_sm = clamp(arr[arr.size() - 1], 0.0, 1.0)
+			treb_sm = _offline_range_avg(bands, 4000.0, 9300.0)
 			tone_sm = _estimate_tone_from_bands(arr)
 			_apply_offline_spectrum(arr)
 		else:
 			_apply_offline_spectrum(PackedFloat32Array())
 	else:
 		_apply_offline_spectrum(PackedFloat32Array())
-
-	var effective_dt := _offline_dt
-	if effective_dt <= 0.0:
-		effective_dt = 1.0 / max(1.0, _offline_fps)
-	if effective_dt <= 0.0:
-		effective_dt = 1.0 / 60.0
 
 	_update_waveform_texture()
 	_update_spec_texture()
@@ -1344,9 +1497,22 @@ func _process_offline() -> void:
 		_set_uniform_if_present(mat, "kick_env", clamp(_kick_env, 0.0, 1.0))
 		_broadcast_audio_uniforms()
 		_debug_trace_audio_uniforms(effective_dt)
-
+	
 	_update_aspect()
 	_update_track_overlay(overlay_time)
+	_advance_offline_time(effective_dt)
+
+func _advance_offline_time(dt: float) -> void:
+	if dt <= 0.0:
+		return
+	if _export_renderer_runtime:
+		return
+	var next_time := _offline_playhead + dt
+	var duration := get_offline_duration()
+	if duration > 0.0 and next_time > duration:
+		next_time = duration
+	_offline_playhead = next_time
+	_last_play_pos = _offline_time_offset + _offline_playhead
 
 func _sample_offline_features(t: float) -> Dictionary:
 	if _offline_features.is_empty():
@@ -1446,6 +1612,7 @@ func _shader_has_uniform(m: ShaderMaterial, name: String) -> bool:
 func _set_uniform_if_present(m: ShaderMaterial, name: String, v) -> void:
 	if _shader_has_uniform(m, name):
 		m.set_shader_parameter(name, v)
+		#print("[apply_shader_params] ", name, "=", v, " -> ", m)
 
 func _broadcast_audio_uniforms() -> void:
 	var level_val = clamp(level_sm * level_boost, 0.0, 1.0)
@@ -1658,6 +1825,7 @@ func _apply_static_shader_inputs(m: ShaderMaterial) -> void:
 	_set_uniform_if_present(m, "waveform_tex", _wave_tex)
 	if _buffer_viewport_texture != null:
 		_set_uniform_if_present(m, "buffer_a_tex", _buffer_viewport_texture)
+		_set_uniform_if_present(m, "history_tex", _buffer_viewport_texture)
 	if buffer_viewport != null:
 		var size_vec := Vector2(float(buffer_viewport.size.x), float(buffer_viewport.size.y))
 		_set_uniform_if_present(m, "buffer_a_size", size_vec)
@@ -1846,6 +2014,15 @@ func _bind_all_material_textures() -> void:
 # -----------------------------------------------------------------------------------
 # Tracklist overlay implementation (NEW)
 # -----------------------------------------------------------------------------------
+func _get_clock_time(now_sec: float) -> float:
+	# For realtime mode, the event time and display time are the same.
+	if !_offline_mode:
+		return now_sec
+
+	# In offline mode, always display absolute mix time on the clock.
+	# The features loader keeps the mix start offset in _offline_time_offset,
+	# and _offline_playhead is the local 0..duration time within the window.
+	return _offline_time_offset + _offline_playhead
 
 func _build_overlay() -> void:
 	var layer := $CanvasLayer
@@ -2151,7 +2328,8 @@ func apply_tracklist_entry(entry: Dictionary) -> void:
 	if title != "" and _title_label:
 		_title_label.text = title
 	if _time_label:
-		_time_label.text = _format_clock(_last_play_pos)
+		var clock_sec := _get_clock_time(_last_play_pos)
+		_time_label.text = _format_clock(clock_sec)
 
 func _log_tracklist_debug() -> void:
 	if _cues.is_empty():
@@ -2289,7 +2467,8 @@ func _update_track_overlay(now_sec: float) -> void:
 		_title_label.text = ""
 
 	if _time_label != null:
-		_time_label.text = _format_clock(now_sec)
+		var clock_sec := _get_clock_time(now_sec)
+		_time_label.text = _format_clock(clock_sec)
 
 
 func _apply_cue_events_for_time(idx: int, cue: Dictionary, now_sec: float, cue_changed: bool) -> void:
@@ -2353,6 +2532,7 @@ func _apply_cue_events_for_time(idx: int, cue: Dictionary, now_sec: float, cue_c
 		var base_params = cue.get("params", {})
 		if base_params is Dictionary and (base_params as Dictionary).size() > 0:
 			_apply_shader_params(base_params)
+			print(str(now_sec)+" (base): "+str(base_params))
 		prev_idx = -1
 
 	if target_idx >= prev_idx + 1:
@@ -2365,6 +2545,7 @@ func _apply_cue_events_for_time(idx: int, cue: Dictionary, now_sec: float, cue_c
 			var ev_params = (ev_entry as Dictionary).get("set", {})
 			if ev_params is Dictionary and (ev_params as Dictionary).size() > 0:
 				_apply_shader_params(ev_params)
+				print(str(now_sec)+" (ev): "+str(ev_params))
 
 	_cue_event_state[idx] = target_idx
 

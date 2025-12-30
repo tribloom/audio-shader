@@ -909,7 +909,7 @@ func _apply_tracklist_properties(node: Node) -> void:
 	elif tracklist_path != "":
 		if has_path:
 			node.set("tracklist_path", tracklist_path)
-
+	
 func _apply_overlay_preference(node: Node) -> void:
 	if node == null:
 		return

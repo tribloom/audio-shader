@@ -11,7 +11,7 @@ var _sets: Array = []      # [{name, audio, tracklist}]
 var _idx: int = -1
 var _paused_pos: float = 0.0
 
-func _enter_tree() -> void:
+func _enter_trees() -> void:
 	# Force windowed first; size/position won't apply to fullscreen or maximized windows.
 	DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
 	DisplayServer.window_set_flag(DisplayServer.WINDOW_FLAG_ALWAYS_ON_TOP, true)

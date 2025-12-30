@@ -1,0 +1,204 @@
+shader_type canvas_item;
+render_mode unshaded, blend_mix;
+
+/* === PIPELINE UNIFORMS (match your setup) === */
+uniform sampler2D spectrum_tex;
+uniform sampler2D history_tex : hint_screen_texture, filter_linear;
+uniform vec2 buffer_a_size = vec2(1920.0, 1080.0);
+
+/* audio shaping */
+uniform float audio_gamma = 2.2;
+uniform float audio_gain  = 3.5;
+uniform float audio_floor = 0.02;
+
+/* look controls */
+uniform float beam_count     : hint_range(2.0, 24.0) = 10.0;
+uniform float beam_speed     : hint_range(-4.0, 4.0) = 1.0;
+uniform float ring_freq      : hint_range(0.5, 6.0)  = 2.5;
+uniform float ring_sharpness : hint_range(0.1, 4.0)  = 1.5;
+uniform float feedback_mix   : hint_range(0.0, 1.0)  = 0.92;
+uniform float noise_amount   : hint_range(0.0, 0.2)  = 0.04;
+
+/* center fill to keep core visible offline */
+uniform float center_fill   : hint_range(0.0, 1.0) = 0.25;
+uniform float center_radius : hint_range(0.1, 2.0) = 1.0;
+
+const float ZUCCONI_OFFSET = 1.05;
+
+/* === HELPERS (same style as espial) === */
+float saturate(float x) { return clamp(x, 0.0, 1.0); }
+vec3  saturate(vec3 x)  { return clamp(x, vec3(0.0), vec3(1.0)); }
+
+vec3 bump3y(vec3 x, vec3 yoffset) {
+    vec3 y = vec3(1.0) - x * x;
+    y = saturate(y - yoffset);
+    return y;
+}
+
+vec3 spectral_zucconi6(float x) {
+    const vec3 c1 = vec3(3.54585104, 2.93225262, 2.41593945);
+    const vec3 x1 = vec3(0.69549072, 0.49228336, 0.27699880);
+    const vec3 y1 = vec3(0.02312639, 0.15225084, 0.52607955);
+
+    const vec3 c2 = vec3(3.90307140, 3.21182957, 3.96587128);
+    const vec3 x2 = vec3(0.11748627, 0.86755042, 0.66077860);
+    const vec3 y2 = vec3(0.84897130, 0.88445281, 0.73949448);
+
+    return bump3y(c1 * (x - x1), y1) +
+           bump3y(c2 * (x - x2), y2);
+}
+
+/* simplex noise */
+vec4 permute(vec4 x) { return mod(x * x * 34.0 + x, 289.0); }
+
+float snoise(vec3 v) {
+    const vec2 C = vec2(0.16666666666, 0.33333333333);
+    const vec4 D = vec4(0.0, 0.5, 1.0, 2.0);
+
+    vec3 i = floor(C.y * (v.x + v.y + v.z) + v);
+    vec3 x0 = v - i + C.x * (i.x + i.y + i.z);
+
+    vec3 g = step(vec3(x0.y, x0.z, x0.x), x0.xyz);
+    vec3 l = 1.0 - g;
+    vec3 i1 = min(g.xyz, vec3(l.z, l.x, l.y));
+    vec3 i2 = max(g.xyz, vec3(l.z, l.x, l.y));
+
+    vec3 x1 = x0 - i1 + C.x;
+    vec3 x2 = x0 - i2 + C.y;
+    vec3 x3 = x0 - D.yyy;
+
+    i = mod(i, 289.0);
+    vec4 p = permute(
+        permute(
+            permute(i.z + vec4(0.0, i1.z, i2.z, 1.0)) +
+            i.y + vec4(0.0, i1.y, i2.y, 1.0)
+        ) +
+        i.x + vec4(0.0, i1.x, i2.x, 1.0)
+    );
+
+    vec3 ns = 0.142857142857 * D.wyz - D.xzx;
+    vec4 j = -49.0 * floor(p * ns.z * ns.z) + p;
+
+    vec4 x_ = floor(j * ns.z);
+    vec4 x = x_ * ns.x + ns.yyyy;
+
+    vec4 y_ = floor(j - 7.0 * x_);
+    vec4 y = y_ * ns.x + ns.yyyy;
+
+    vec4 h = 1.0 - abs(x) - abs(y);
+
+    vec4 b0 = vec4(x.xy, y.xy);
+    vec4 b1 = vec4(x.zw, y.zw);
+
+    vec4 s0 = floor(b0) * 2.0 + 1.0;
+    vec4 s1 = floor(b1) * 2.0 + 1.0;
+    vec4 sh = -step(h, vec4(0.0));
+
+    vec4 a0 = b0.xzyw + s0.xzyw * sh.xxyy;
+    vec4 a1 = b1.xzyw + s1.xzyw * sh.zzww;
+
+    vec3 p0 = vec3(a0.xy, h.x);
+    vec3 p1 = vec3(a0.zw, h.y);
+    vec3 p2 = vec3(a1.xy, h.z);
+    vec3 p3 = vec3(a1.zw, h.w);
+
+    vec4 norm = inversesqrt(vec4(
+        dot(p0, p0), dot(p1, p1),
+        dot(p2, p2), dot(p3, p3)
+    ));
+
+    p0 *= norm.x;
+    p1 *= norm.y;
+    p2 *= norm.z;
+    p3 *= norm.w;
+
+    vec4 m = max(
+        0.6 - vec4(
+            dot(x0, x0), dot(x1, x1),
+            dot(x2, x2), dot(x3, x3)
+        ),
+        0.0
+    );
+
+    return 0.5 + 12.0 * dot(
+        m * m * m,
+        vec4(dot(p0, x0), dot(p1, x1), dot(p2, x2), dot(p3, x3))
+    );
+}
+
+/* audio radius mapping */
+float spatialize_audio(float dist) {
+    float fft_domain = dist * dist;
+    float fft_u = clamp(fft_domain * 0.09, 0.0, 1.0);
+    float fft = texture(spectrum_tex, vec2(fft_u, 0.0)).r;
+    fft = max(audio_floor, pow(max(fft, 0.0), audio_gamma));
+    return fft * audio_gain;
+}
+
+/* === MAIN === */
+void fragment() {
+	
+    vec2 resolution = buffer_a_size;
+    if (resolution.x <= 0.0 || resolution.y <= 0.0) {
+        resolution = vec2(1.0, 1.0);
+    }
+
+    vec2 frag_coord = UV * resolution;
+    vec2 uv  = frag_coord / resolution;
+    vec2 st  = (2.0 * frag_coord - resolution) / min(resolution.x, resolution.y);
+
+    float dist  = length(st);
+    float angle = atan(st.y, st.x);
+    float angle01 = (angle / 6.2831853) + 0.5;
+
+    // audio level along radius
+    float audio_signal = spatialize_audio(dist);
+
+// --- safe beat detection (no dangerous pow on big values) ---
+float a = clamp(audio_signal, 0.0, 4.0);  // cap to keep things sane
+
+// simple “over-threshold” curve: zero below ~0.3, 1.0 at >= 1.0
+float beat_raw = saturate((a - 0.30) / 0.70);
+
+// emphasize higher values, but keep it polynomial (no pow with fractional exp)
+float beat = beat_raw * beat_raw;  // 0..1, smooth, safe * 6.5, 0.0, 1.0);
+
+st *= (1.0 + beat * 0.12);
+
+    // beams + rings
+    float beam_phase = angle * beam_count + TIME * beam_speed;
+    float beams = 0.5 + 0.5 * cos(beam_phase);
+
+    float ring_coord    = dist * ring_freq;
+    float ring_pattern  = 0.5 + 0.5 * cos(ring_coord * 6.28318);
+    ring_pattern = pow(ring_pattern, ring_sharpness);
+
+    // add a small radial baseline so the center never collapses to black
+    float radial      = exp(-pow(dist / center_radius, 2.0));
+    float amp         = audio_signal * (0.25 + 0.75 * beams * ring_pattern) + center_fill * radial;
+
+    float zucconi_domain = ZUCCONI_OFFSET - dist;
+    vec3 base_color = spectral_zucconi6(zucconi_domain) * amp * 0.60;
+    vec3 angle_tint = spectral_zucconi6(angle01) * 0.20;
+
+    vec3 color = base_color + angle_tint * amp;
+
+    // jittered history sampling (subtle feedback swirl)
+    float noise_scale = 1.0 + sin(TIME * 0.7) * 0.3;
+    vec2 noise_domain = st * noise_scale;
+
+    vec2 jitter = (vec2(
+        snoise(vec3(noise_domain, TIME * 0.30)),
+        snoise(vec3(noise_domain + vec2(1000.0), TIME * 0.30))
+    ) - vec2(0.5)) * noise_amount * 2.0;
+
+    vec2 history_uv = uv + jitter;
+    history_uv = clamp(history_uv, vec2(0.001), vec2(0.999));
+
+    vec3 prev_color = texture(history_tex, history_uv).rgb;
+
+    color = mix(color, prev_color, feedback_mix);
+
+    COLOR = vec4(saturate(color), 1.0);
+	color *= (1.0 + beat * 0.7);
+}
